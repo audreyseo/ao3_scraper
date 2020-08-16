@@ -264,8 +264,6 @@ def search_start(contents, works):
                             max_chapters=max_chapters,
                             hits=hits))
   return (next_url, problem)
-    
-#def search_next(contents, works)
 
 
 if __name__ == '__main__':
@@ -293,26 +291,15 @@ if __name__ == '__main__':
     "max_works": args.max_works,
     "page_increment": args.page_increment
   }
-  print(params_dict)
+  
   
   url = ao3_work_search_url(category_ids=args.category, rating_ids=args.rating, archive_warning_ids=args.warning, page=int(args.page))
 
   # Save params url into params dict for good ole replicability purposes
   params_dict["url"] = url
-  '''print(len(sys.argv) >= 2)
-  if len(sys.argv) >= 2:
-    url = sys.argv[1]
-    pass
-  else:
-    #url = "https://archiveofourown.org/works/search?utf8=✓&work_search%5Bquery%5D=&work_search%5Btitle%5D=&work_search%5Bcreators%5D=&work_search%5Brevised_at%5D=&work_search%5Bcomplete%5D=&work_search%5Bcrossover%5D=&work_search%5Bsingle_chapter%5D=0&work_search%5Bword_count%5D=&work_search%5Blanguage_id%5D=&work_search%5Bfandom_names%5D=&work_search%5Brating_ids%5D=&work_search%5Bcategory_ids%5D%5B%5D=23&work_search%5Bcharacter_names%5D=&work_search%5Brelationship_names%5D=&work_search%5Bfreeform_names%5D=&work_search%5Bhits%5D=&work_search%5Bkudos_count%5D=&work_search%5Bcomments_count%5D=&work_search%5Bbookmarks_count%5D=&work_search%5Bsort_column%5D=_score&work_search%5Bsort_direction%5D=desc&commit=Search"
-    url = "https://archiveofourown.org/works/search?utf8=✓&work_search%5Bquery%5D=&work_search%5Btitle%5D=&work_search%5Bcreators%5D=&work_search%5Brevised_at%5D=&work_search%5Bcomplete%5D=&work_search%5Bcrossover%5D=&work_search%5Bsingle_chapter%5D=0&work_search%5Bword_count%5D=&work_search%5Blanguage_id%5D=&work_search%5Bfandom_names%5D=&work_search%5Brating_ids%5D=&work_search%5Bcategory_ids%5D%5B%5D=116&work_search%5Bcharacter_names%5D=&work_search%5Brelationship_names%5D=&work_search%5Bfreeform_names%5D=&work_search%5Bhits%5D=&work_search%5Bkudos_count%5D=&work_search%5Bcomments_count%5D=&work_search%5Bbookmarks_count%5D=&work_search%5Bsort_column%5D=_score&work_search%5Bsort_direction%5D=desc&commit=Search"'''
+  print(params_dict)
   content = ""
-  #split_url = list(urllib.parse.urlsplit(url))
-  #print(split_url)
-  #if len(split_url) > 1:
-  #  split_url[3] = urllib.parse.quote(split_url[3])
-  #  url = urllib.parse.urlunsplit(split_url)
-  #print(url)
+  
   headers = {'user-agent' : ''}
   res = requests.get(url, headers=headers)
   fetch_time = time.ctime(time.time())
@@ -334,7 +321,11 @@ if __name__ == '__main__':
     # had to reference another implementation:
     # https://github.com/radiolarian/AO3Scraper/blob/master/ao3_work_ids.py
     # to figure this out
+    # Though I also could no longer find any reference to this in the AO3
+    # terms of service anymore (though I could have sworn it used to be in there)
     time.sleep(5)
+
+    # Need try catch since sometimes it doesn't work right
     try:
       res1 = requests.get(next_url, headers=headers)
       content = res1.text
