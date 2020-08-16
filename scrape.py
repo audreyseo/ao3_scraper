@@ -362,6 +362,8 @@ if __name__ == '__main__':
       print("next_url: {}".format(next_url))
       print("old_next_url: {}".format(old_next_url))
       print("Last page attempted: {}".format(page))
+      # Make the loop condition invalid
+      next_url = None
   num_works += len(works) - 1
   with open("{}{}.json".format(batch_name, dumps), "w") as f:
     f.write(json.dumps(works, indent="  "))
