@@ -304,6 +304,8 @@ if __name__ == '__main__':
   res = requests.get(url, headers=headers)
   fetch_time = time.ctime(time.time())
   fetch_time = fetch_time.replace(":", ".")
+  # Get rid of pesky spaces in batch file names
+  fetch_time = fetch_time.replace(" ", "_")
   batch_name = "batch_" + fetch_time
   params_dict["fetch_time"] = fetch_time
   content = res.text

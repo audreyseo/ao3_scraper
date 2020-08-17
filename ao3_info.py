@@ -1,3 +1,6 @@
+import os
+import re
+
 search_keys = [
   "query",
   "title",
@@ -70,6 +73,13 @@ needs_double_brackets = [
   "category_ids",
   "archive_warning_ids"
 ]
+
+def get_work_id(title_url):
+  myid = os.path.basename(title_url)
+  #print("myid: {}".format(myid))
+  if re.match("^\d+$", myid):
+    return myid
+  return None
 
 def ao3_work_search_url(query="",
                         title="",
