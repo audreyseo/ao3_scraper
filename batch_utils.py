@@ -20,6 +20,7 @@ def add_files_to_exclude(params):
   return []
 def get_files_to_collate(filename, collate_all):
   filenames = []
+  duplicate_filenames = []
   if collate_all:
     # get the parameters for the particular file, so that
     # they can all be squished together
@@ -60,6 +61,7 @@ def get_files_to_collate(filename, collate_all):
       pass
     for i in inds_to_remove[-1:]:
       print("indices to remove: {}".format(i))
+      duplicate_filenames.append(filenames.pop(i))
     pass
   else:
     bbase, ext = get_bbase_ext(filename)
@@ -71,7 +73,7 @@ def get_files_to_collate(filename, collate_all):
       newname = bbase + str(counter) + ext
       pass
     pass
-  return filenames
+  return filenames, duplicate_filenames
 def collate(filename, collate_all=False):
   base, ext = os.path.splitext(filename)
   if ext != ".json":
@@ -85,14 +87,30 @@ def collate(filename, collate_all=False):
     index += 1
     return str(index)
   f = bbase + strindex() + ext
-  #myfiles = get_files_to_collate(filename, collate_all)
+
+  # Retrieves all of the files to collate together, depending on the desired
+  # parameters
+  myfiles, dupe_files = get_files_to_collate(filename, collate_all)
   works = []
-  while os.path.exists(f):
+  for f in myfiles:
     with open(f, "r") as j:
       if len(works) == 0:
         works = json.loads(j.read())
         if "included_batch_files" not in works[0]:
+          # Start off by noting which files are going to be included
           works[0]["included_batch_files"] = []
+          pass
+        if len(works[0]["included_batch_files"]) == 0:
+          works[0]["included_batch_files"] = dupes
+          pass
+        else:
+          for d in dupe_files:
+            if d not in works[0]["included_batch_files"]:
+              works[0]["included_batch_files"].append(d)
+              pass
+            pass
+          pass
+        pass
       else:
         tempworks = json.loads(j.read())
         # exclude the first one, which is
@@ -110,7 +128,7 @@ def collate(filename, collate_all=False):
         pass
       pass
     works[0]["included_batch_files"].append(f)
-    f = bbase + strindex() + ext
+    #f = bbase + strindex() + ext
     pass
   seen_ids = []
   indices_to_remove = []
