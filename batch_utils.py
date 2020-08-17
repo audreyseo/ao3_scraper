@@ -85,14 +85,14 @@ def collate(filename, collate_all=False):
     index += 1
     return str(index)
   f = bbase + strindex() + ext
-  if collate_all:
-    myfiles = get_files_to_collate(filename, collate_all)
-    return None
+  #myfiles = get_files_to_collate(filename, collate_all)
   works = []
   while os.path.exists(f):
     with open(f, "r") as j:
       if len(works) == 0:
         works = json.loads(j.read())
+        if "included_batch_files" not in works[0]:
+          works[0]["included_batch_files"] = []
       else:
         tempworks = json.loads(j.read())
         # exclude the first one, which is
@@ -109,6 +109,7 @@ def collate(filename, collate_all=False):
           pass
         pass
       pass
+    works[0]["included_batch_files"].append(f)
     f = bbase + strindex() + ext
     pass
   seen_ids = []
@@ -135,6 +136,11 @@ def collate(filename, collate_all=False):
   print("Found {} entries".format(len(works) - 1))
   # file for all of them
   fall = bbase + "_all" + ext
+  if collate_all:
+    collate_time = time.ctime(time.time())
+    collate_time = collate_time.replace(":", ".")
+    collate_time = collate_time.replace(" ", "_")
+    fall = "batch_all_collated_" + collate_time + ".json"
   with open(fall, "w") as j:
     j.write(json.dumps(works, indent="  "))
     j.flush()
