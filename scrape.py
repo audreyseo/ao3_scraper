@@ -274,7 +274,7 @@ def search_start(contents, works):
   return (next_url, problem)
 
 
-def scrape_search_pages(content, params_dict, batch_name):
+def scrape_search_pages(content, params_dict, batch_name, max_works):
   works = []
   # make sure that params_dict is inside of works
   # so it's a part of the data that gets written
@@ -283,7 +283,12 @@ def scrape_search_pages(content, params_dict, batch_name):
   counter = 1
   dumps = 0
   num_works = 0
+  def get_num_collected():
+    return (len(works) - 1) + num_works
+  
   page = int(args.page) + 1
+  # assume the worst, lol
+  failed_problematically = True
   while next_url is not None:
     # 5 seconds in between requests, per AO3 terms of service
     # had to reference another implementation:
@@ -308,6 +313,15 @@ def scrape_search_pages(content, params_dict, batch_name):
       
       counter += 1
       page += 1
+      if max_works > 0 and get_num_collected() >= max_works:
+        # STOP
+        next_url = None
+        print("Went over maximum {} by {} works".format(max_works, get_num_collected() - max_works))
+        while get_num_collected() > max_works:
+          print("Popping off: {}".format(works.pop(len(works) - 1)))
+          pass
+        pass
+      
       if (counter % 5) == 0 and (counter % 100) != 0:
         print("Done with {}".format(counter))
         pass
@@ -363,6 +377,9 @@ def get_argument_parser():
                       default="none",
                       choices=["none", "fandoms"],
                       help="Split a search over every searchable tag. Currently only supports search over all fandoms. (This helps to make a broad search more tractable)")
+  parser.add_argument("--test_run",
+                      action="store_true",
+                      help="Run a test by only collecting the first 100 works. Saves the resulting scraped data to a file(s) named test_[timestamp][number].json. To collect more or less works for your test run, set using -m/--max_works.")
   return parser
 
 def get_timestamp():
@@ -386,7 +403,8 @@ if __name__ == '__main__':
     "end_page": args.end_page,
     "max_works": args.max_works,
     "page_increment": args.page_increment,
-    "split_by": args.split_by
+    "split_by": args.split_by,
+    "test_run": args.test_run
   }
   
   url = ao3_work_search_url(category_ids=args.category, rating_ids=args.rating, archive_warning_ids=args.warning, page=int(args.page))
@@ -399,7 +417,8 @@ if __name__ == '__main__':
   headers = {'user-agent' : ''}
   res = requests.get(url, headers=headers)
   fetch_time = get_timestamp()
-  batch_name = "batch_" + fetch_time
+  batch_name = "batch_" + fetch_time if not args.test_run else "test_" + fetch_time
   params_dict["fetch_time"] = fetch_time
   content = res.text
-  scrape_search_pages(content, params_dict, batch_name)
+  max_works = 100 if args.test_run else -1
+  scrape_search_pages(content, params_dict, batch_name, max_works)
