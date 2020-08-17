@@ -212,6 +212,12 @@ def make_entry(title="", title_url="", author="", author_url="", fandom=[], rati
     "hits": hits
   }
 
+searchable_parameters = ["rating", "warnings", "category"]
+searchables_to_params_dict_keys = {
+  "rating": "rating",
+  "warnings": "warning",
+  "category": "category"
+}
 
 
 def search_start(contents, works):
@@ -265,7 +271,6 @@ def search_start(contents, works):
                             hits=hits))
   return (next_url, problem)
 
-
 if __name__ == '__main__':
   # Commandline arguments
   parser = argparse.ArgumentParser()
@@ -281,7 +286,7 @@ if __name__ == '__main__':
   parser.add_argument("--page_increment", default=1, help="Collect every nth page from a search, defaults to 1, i.e. collecting every page from a search.")
   
   args = parser.parse_args()
-
+  
   params_dict = {
     "category": args.category,
     "rating": args.rating,

@@ -2,14 +2,76 @@ import argparse
 import os
 import json
 from ao3_info import get_work_id
+from scrape import searchable_parameters, searchables_to_params_dict_keys
 import readline
 import time
+import glob
+import re
 
 def get_bbase_ext(filename):
   base, ext = os.path.splitext(filename)
   bbase = base[:-1]
   return bbase, ext
 
+
+def add_files_to_exclude(params):
+  if "included_batch_files" in params:
+    return params["included_batch_files"]
+  return []
+def get_files_to_collate(filename, collate_all):
+  filenames = []
+  if collate_all:
+    # get the parameters for the particular file, so that
+    # they can all be squished together
+    params = {}
+    with open(filename, "r") as f:
+      works = json.loads(f.read())
+      params = works[0]
+      pass
+    exclude = add_files_to_exclude(params)
+    for name in glob.glob("./batch_*.json"):
+      should_add = True
+      batch_params = {}
+      name = os.path.basename(name)
+      if name not in exclude:
+        with open(name, "r") as f:
+          works = json.loads(f.read())
+          batch_params = works[0]
+          pass
+        for p in searchable_parameters:
+          if p in params:
+            should_add = should_add and p in batch_params and params[p] == batch_params[p]
+            pass
+          pass
+        if should_add:
+          exclude = exclude + add_files_to_exclude(batch_params)
+          filenames.append(name)
+          print("Globbed name: {}".format(name))
+          pass
+        pass
+      pass
+    inds_to_remove = []
+    print("Exclude: {}".format(exclude))
+    print("Filenames: {}".format(filenames))
+    for i in range(len(filenames)):
+      if filenames[i] in exclude:
+        inds_to_remove.append(i)
+        pass
+      pass
+    for i in inds_to_remove[-1:]:
+      print("indices to remove: {}".format(i))
+    pass
+  else:
+    bbase, ext = get_bbase_ext(filename)
+    counter = 0
+    newname = bbase + str(counter) + ext
+    while os.path.exists(newname):
+      filenames.append(newname)
+      counter += 1
+      newname = bbase + str(counter) + ext
+      pass
+    pass
+  return filenames
 def collate(filename, collate_all=False):
   base, ext = os.path.splitext(filename)
   if ext != ".json":
@@ -23,6 +85,9 @@ def collate(filename, collate_all=False):
     index += 1
     return str(index)
   f = bbase + strindex() + ext
+  if collate_all:
+    myfiles = get_files_to_collate(filename, collate_all)
+    return None
   works = []
   while os.path.exists(f):
     with open(f, "r") as j:
