@@ -7,6 +7,8 @@ import json
 import time
 import argparse
 from ao3_info import ao3_work_search_url
+from fandom_scrape import scrape_all_fandoms
+
 
 ao3_home = "https://archiveofourown.org"
 
@@ -284,6 +286,10 @@ if __name__ == '__main__':
   parser.add_argument("-e", "--end_page", default=-1, help="Which page to stop at. Use -1 to go to the end")
   parser.add_argument("-m", "--max_works", default=-1, help="How many works' stats to include. -1 means all possible.")
   parser.add_argument("--page_increment", default=1, help="Collect every nth page from a search, defaults to 1, i.e. collecting every page from a search.")
+  parser.add_argument("--split_by",
+                      default="none",
+                      choices=["none", "fandoms"],
+                      help="Split a search over every searchable tag. Currently only supports search over all fandoms. (This helps to make a broad search more tractable)")
   
   args = parser.parse_args()
   
@@ -294,7 +300,8 @@ if __name__ == '__main__':
     "page": args.page,
     "end_page": args.end_page,
     "max_works": args.max_works,
-    "page_increment": args.page_increment
+    "page_increment": args.page_increment,
+    "split_by": args.split_by
   }
   
   
