@@ -7,7 +7,7 @@ import json
 import time
 import argparse
 from ao3_info import ao3_work_search_url
-from fandom_scrape import scrape_all_fandoms
+import fandom_scrape
 
 
 ao3_home = "https://archiveofourown.org"
@@ -273,54 +273,8 @@ def search_start(contents, works):
                             hits=hits))
   return (next_url, problem)
 
-if __name__ == '__main__':
-  # Commandline arguments
-  parser = argparse.ArgumentParser()
-  parser.add_argument("-c", "--category", nargs="*", default=["FF"], help="List (without commas) of any of FF, MM, FM, Gen, Multi, or Other")
-  parser.add_argument("-r", "--rating", default="", help="Rating, if any, of content. Valid values are G, T, M, E, and NR")
-  parser.add_argument("-w", "--warning", nargs="*", default=[], help="List (without commas) of any of NAWA (No Archive Warnings Apply), RNC (Rape/Non-Con), MCD (Major Character Death), CNTUAW (Choose Not To Use Archive Warnings), and Underage")
-  parser.add_argument("-p", "--page", default=1, help="Which page of the search to start from")
-  # These aren't actually being implemented at the moment
-  # But they're here so that I can actually do something with them
-  # soon hopefully
-  parser.add_argument("-e", "--end_page", default=-1, help="Which page to stop at. Use -1 to go to the end")
-  parser.add_argument("-m", "--max_works", default=-1, help="How many works' stats to include. -1 means all possible.")
-  parser.add_argument("--page_increment", default=1, help="Collect every nth page from a search, defaults to 1, i.e. collecting every page from a search.")
-  parser.add_argument("--split_by",
-                      default="none",
-                      choices=["none", "fandoms"],
-                      help="Split a search over every searchable tag. Currently only supports search over all fandoms. (This helps to make a broad search more tractable)")
-  
-  args = parser.parse_args()
-  
-  params_dict = {
-    "category": args.category,
-    "rating": args.rating,
-    "warning": args.warning,
-    "page": args.page,
-    "end_page": args.end_page,
-    "max_works": args.max_works,
-    "page_increment": args.page_increment,
-    "split_by": args.split_by
-  }
-  
-  
-  url = ao3_work_search_url(category_ids=args.category, rating_ids=args.rating, archive_warning_ids=args.warning, page=int(args.page))
 
-  # Save params url into params dict for good ole replicability purposes
-  params_dict["url"] = url
-  print(params_dict)
-  content = ""
-  
-  headers = {'user-agent' : ''}
-  res = requests.get(url, headers=headers)
-  fetch_time = time.ctime(time.time())
-  fetch_time = fetch_time.replace(":", ".")
-  # Get rid of pesky spaces in batch file names
-  fetch_time = fetch_time.replace(" ", "_")
-  batch_name = "batch_" + fetch_time
-  params_dict["fetch_time"] = fetch_time
-  content = res.text
+def scrape_search_pages(content, params_dict, batch_name):
   works = []
   # make sure that params_dict is inside of works
   # so it's a part of the data that gets written
@@ -349,6 +303,9 @@ if __name__ == '__main__':
         print("Last page!: {}".format(old_next_url))
         if isProblem:
           print("Left off trying to get page number {}".format(page))
+          pass
+        pass
+      
       counter += 1
       page += 1
       if (counter % 5) == 0 and (counter % 100) != 0:
@@ -371,6 +328,7 @@ if __name__ == '__main__':
       print("Last page attempted: {}".format(page))
       # Make the loop condition invalid
       next_url = None
+      pass
     except:
       print("Some other error occurred. Please try again.")
       print("next_url: {}".format(next_url))
@@ -378,8 +336,70 @@ if __name__ == '__main__':
       print("Last page attempted: {}".format(page))
       # Make the loop condition invalid
       next_url = None
+      pass
+    pass
   num_works += len(works) - 1
   with open("{}{}.json".format(batch_name, dumps), "w") as f:
     f.write(json.dumps(works, indent="  "))
     f.flush()
-  print(num_works)
+    pass
+  print("Num works: {}".format(num_works))
+  pass
+
+def get_argument_parser():
+  # Commandline arguments
+  parser = argparse.ArgumentParser()
+  parser.add_argument("-c", "--category", nargs="*", default=["FF"], help="List (without commas) of any of FF, MM, FM, Gen, Multi, or Other")
+  parser.add_argument("-r", "--rating", default="", help="Rating, if any, of content. Valid values are G, T, M, E, and NR")
+  parser.add_argument("-w", "--warning", nargs="*", default=[], help="List (without commas) of any of NAWA (No Archive Warnings Apply), RNC (Rape/Non-Con), MCD (Major Character Death), CNTUAW (Choose Not To Use Archive Warnings), and Underage")
+  parser.add_argument("-p", "--page", default=1, help="Which page of the search to start from")
+  # These aren't actually being implemented at the moment
+  # But they're here so that I can actually do something with them
+  # soon hopefully
+  parser.add_argument("-e", "--end_page", default=-1, help="Which page to stop at. Use -1 to go to the end")
+  parser.add_argument("-m", "--max_works", default=-1, help="How many works' stats to include. -1 means all possible.")
+  parser.add_argument("--page_increment", default=1, help="Collect every nth page from a search, defaults to 1, i.e. collecting every page from a search.")
+  parser.add_argument("--split_by",
+                      default="none",
+                      choices=["none", "fandoms"],
+                      help="Split a search over every searchable tag. Currently only supports search over all fandoms. (This helps to make a broad search more tractable)")
+  return parser
+
+def get_timestamp():
+  fetch_time = time.ctime(time.time())
+  fetch_time = fetch_time.replace(":", ".")
+  # Get rid of pesky spaces in batch file names
+  fetch_time = fetch_time.replace(" ", "_")
+  return fetch_time
+
+
+if __name__ == '__main__':
+  parser = get_argument_parser()
+  
+  args = parser.parse_args()
+  
+  params_dict = {
+    "category": args.category,
+    "rating": args.rating,
+    "warning": args.warning,
+    "page": args.page,
+    "end_page": args.end_page,
+    "max_works": args.max_works,
+    "page_increment": args.page_increment,
+    "split_by": args.split_by
+  }
+  
+  url = ao3_work_search_url(category_ids=args.category, rating_ids=args.rating, archive_warning_ids=args.warning, page=int(args.page))
+
+  # Save params url into params dict for good ole replicability purposes
+  params_dict["url"] = url
+  print(params_dict)
+  #content = ""
+  
+  headers = {'user-agent' : ''}
+  res = requests.get(url, headers=headers)
+  fetch_time = get_timestamp()
+  batch_name = "batch_" + fetch_time
+  params_dict["fetch_time"] = fetch_time
+  content = res.text
+  scrape_search_pages(content, params_dict, batch_name)
