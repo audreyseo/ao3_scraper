@@ -90,7 +90,7 @@ def collate(filename, collate_all=False):
 
   # Retrieves all of the files to collate together, depending on the desired
   # parameters
-  myfiles, dupe_files = get_files_to_collate(filename, collate_all)
+  myfiles, dupes = get_files_to_collate(filename, collate_all)
   works = []
   for f in myfiles:
     with open(f, "r") as j:
