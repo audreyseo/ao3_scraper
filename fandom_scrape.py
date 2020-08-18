@@ -4,6 +4,7 @@ import os
 from scrape import find_all_of_classes, ao3_home, has_href
 import re
 import json
+import time
 
 fandom_urls = {
   "Anime & Manga": "https://archiveofourown.org/media/Anime%20*a*%20Manga/fandoms",
@@ -88,16 +89,32 @@ def scrape_all_fandoms():
     pass
   return entries
 
-if __name__ == '__main__':
+def save_fandoms():
   names = scrape_all_fandoms()
+  # make a timestamp
+  fetch_time = time.ctime(time.time())
+  # put the timestamp in an object with the names
+  info = {
+    "last_updated": fetch_time,
+    "info": names
+  }
+  
   print("Writing all fandom info...")
   with open(fandom_info_json_name, "w") as f:
-    f.write(json.dumps(names, indent="  "))
+    f.write(json.dumps(info, indent="  "))
     f.flush()
     pass
   print("Writing fandom names list...")
-  just_names = [n["name"] for n in names]
+  just_names = {
+    "names": [n["name"] for n in names],
+    "last_updated": fetch_time
+  }
   with open(fandom_names_json_name, "w") as f:
     f.write(json.dumps(just_names, indent="  "))
     f.flush()
     pass
+  pass
+
+if __name__ == '__main__':
+  save_fandoms()
+  pass

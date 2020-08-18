@@ -7,7 +7,7 @@ import json
 import time
 import argparse
 from ao3_info import ao3_work_search_url
-import fandom_scrape
+#import fandom_scrape
 from utils import VerifyPositiveIntAction
 
 ao3_home = "https://archiveofourown.org"
