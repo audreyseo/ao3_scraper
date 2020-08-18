@@ -5,3 +5,5 @@ batch*.json
 *#
 .#*
 fandom*.json
+test_*.json
+temp*
