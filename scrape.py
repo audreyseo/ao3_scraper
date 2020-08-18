@@ -286,7 +286,7 @@ def scrape_search_pages(content, params_dict, batch_name, max_works):
   def get_num_collected():
     return (len(works) - 1) + num_works
   
-  page = int(args.page) + 1
+  page = params_dict["page"] + 1
   # assume the worst, lol
   failed_problematically = True
   while next_url is not None:
