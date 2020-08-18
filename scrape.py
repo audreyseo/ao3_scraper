@@ -10,6 +10,7 @@ from ao3_info import ao3_work_search_url, validate_ao3_search_url, save_url_para
 #import fandom_scrape
 from utils import VerifyPositiveIntAction
 from urllib.parse import parse_qs
+from colors import color
 
 ao3_home = "https://archiveofourown.org"
 
@@ -24,22 +25,46 @@ def has_href(tag):
   return 'href' in tag.attrs
 
 def get_title_and_author(work_tag):
+  def find_by_index(contents):
+    for i in range(len(contents)):
+      if str(contents[i]).find("by") >= 0:
+        return i
+      pass
+    return -1
   found = work_tag.find_all("h4")
   found = [f for f in found if has_class(f) and "heading" in f['class']]
-  #print(found)
+  #print("get_title_and_author: found:\n{}".format(found))
   if len(found) == 1:
     parts = found[0].find_all("a")
+    if len(parts) == 0:
+      # I actually have no idea what to do about this
+      return (None, None, None, None)
+    # So we know that there's at least 1
+    title_tag = parts[0]
+    title_href = title_tag["href"] if has_href(title_tag) else None
+    title = str(title_tag.string)
+    author = None
+    author_href = None
     if len(parts) >= 2:
-      title_tag = parts[0]
       author_tag = parts[1]
-      title_href = title_tag["href"] if has_href(title_tag) else None
       author_href = author_tag["href"] if has_href(author_tag) else None
-      title = str(title_tag.string)
       author = str(author_tag.string)
-      return (title, title_href, author, author_href)
+      pass
+    elif len(parts) == 1:
+      # Probably anonymous
+      #print(found[0].contents)
+      by_index = find_by_index(found[0].contents)
+      
+      if by_index > -1 and by_index + 2 < len(found[0].contents):
+        if found[0].contents[by_index + 2].find("Anonymous") >= 0:
+          author = "Anonymous"
+          pass
+        pass
+      pass
     #else:
     #  print("Too many parts found: {}, in:\n{}".format(parts, work_tag))
-    pass
+    return (title, title_href, author, author_href)
+    
   elif len(found) > 1:
     print("More than one title possibility found: {}".format(found))
   else:
@@ -171,6 +196,11 @@ def get_stats(work_tag):
   return ("FAILURE", "FAILURE", "FAILURE", "FAILURE", "FAILURE")
 
 def get_next_url(soup):
+  def shorten(mystr):
+    if len(mystr) > 100:
+      last_50 = max(51, len(mystr)-50)
+      return mystr[:50] + "\n<!-- Omitting lots and lots of HTML and other output... -->\n" + mystr[last_50:]
+    return mystr
   find = find_of_classes(soup, "li", "next")
   if find is not None:
     oldFind = find
@@ -185,7 +215,7 @@ def get_next_url(soup):
         return (None, False)
       pass
     pass
-  print("Uh oh, no more next in soup!:\n{}".format(soup.prettify()))
+  print("Uh oh, no more next in soup!:\n{}".format(color(shorten(soup.prettify()), fg="blue")))
   return (None, True)
   
 
