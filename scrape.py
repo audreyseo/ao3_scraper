@@ -6,9 +6,10 @@ from bs4 import BeautifulSoup
 import json
 import time
 import argparse
-from ao3_info import ao3_work_search_url
+from ao3_info import ao3_work_search_url, validate_ao3_search_url, save_url_params
 #import fandom_scrape
 from utils import VerifyPositiveIntAction
+from urllib.parse import parse_qs
 
 ao3_home = "https://archiveofourown.org"
 
@@ -447,6 +448,15 @@ def get_argument_parser():
                             "data to a file(s) named test_[timestamp][number].json. "\
                             "To collect more or less works for your test "\
                             "run, set using -m/--max_works."))
+  parser.add_argument("-u", "--from-url",
+                      default="",
+                      help=("Use a given url to start a search. This effectively "\
+                            "ignores the commandline options --rating, "\
+                            "--warning, --category, and --page. However --max_works/-m "\
+                            "should still function as normal. Also note that this will "\
+                            "alter what shows up in the params saved at the beginning of "\
+                            "every batch file. Only parameters that can be altered via "\
+                            "these command line optinos will be saved there."))
   return parser
 
 def get_timestamp():
@@ -471,13 +481,28 @@ if __name__ == '__main__':
     "max_works": args.max_works,
     "page_increment": args.page_increment,
     "split_by": args.split_by,
-    "test_run": args.test_run
+    "test_run": args.test_run,
+    "from_url": args.from_url
   }
+
+  using_from_url = len(args.from_url) > 0
+
+  if using_from_url and not validate_ao3_search_url(args.from_url):
+    print(("The url \"{}\" is not a valid AO3 search url. "\
+           "Please make sure it is correct and try again.").format(args.from_url))
+    print("Exiting now.")
+    sys.exit()
+    pass
   
-  url = ao3_work_search_url(category_ids=args.category, rating_ids=args.rating, archive_warning_ids=args.warning, page=int(args.page))
+  url = ao3_work_search_url(category_ids=args.category,
+                            rating_ids=args.rating,
+                            archive_warning_ids=args.warning,
+                            page=int(args.page)) if not using_from_url else args.from_url
 
   # Save params url into params dict for good ole replicability purposes
   params_dict["url"] = url
+  if using_from_url:
+    save_url_params(params_dict, url)
   print(params_dict)
   #content = ""
   
@@ -490,4 +515,8 @@ if __name__ == '__main__':
   content = res.text
   max_works = args.max_works
   max_works = 100 if args.test_run and max_works < 0 else max_works
-  scrape_search_pages(content, params_dict, batch_name, max_works, restart_from_file=restart_from_file)
+  scrape_search_pages(content,
+                      params_dict,
+                      batch_name,
+                      max_works,
+                      restart_from_file=restart_from_file)
