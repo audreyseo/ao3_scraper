@@ -1,5 +1,7 @@
 # Ignore info files
 batch*.json
+# Ignore restarting batch files
+restart_batch*
 # Ignore temp files
 *~
 *#

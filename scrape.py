@@ -274,7 +274,7 @@ def search_start(contents, works):
   return (next_url, problem)
 
 
-def scrape_search_pages(content, params_dict, batch_name, max_works):
+def scrape_search_pages(content, params_dict, batch_name, max_works, restart_from_file=None):
   works = []
   # make sure that params_dict is inside of works
   # so it's a part of the data that gets written
@@ -289,6 +289,29 @@ def scrape_search_pages(content, params_dict, batch_name, max_works):
   page = params_dict["page"] + 1
   # assume the worst, lol
   failed_problematically = True
+
+  def write_to_restart_from_file(url_to_write):
+    if restart_from_file is not None:
+      with open(restart_from_file, "a") as f:
+        f.write(url_to_write + "\n")
+        f.flush()
+        pass
+      pass
+    pass
+
+  def write_to_restart_from_file(urls_to_write):
+    if restart_from_file is not None and len(urls_to_write) > 0:
+      with open(restart_from_file, "a") as f:
+        f.write("\n".join(urls_to_write) + "\n")
+        f.flush()
+        pass
+      pass
+    elif len(urls_to_write) == 0:
+      print("No urls to restart")
+    pass
+
+  pages_to_retry = []
+  
   while next_url is not None:
     # 5 seconds in between requests, per AO3 terms of service
     # had to reference another implementation:
@@ -308,6 +331,12 @@ def scrape_search_pages(content, params_dict, batch_name, max_works):
         print("Last page!: {}".format(old_next_url))
         if isProblem:
           print("Left off trying to get page number {}".format(page))
+          # TRYING THIS, DUNNO IF IT WILL WORK
+          pages_to_retry.append(old_next_url)
+          next_url = ao3_work_search_url(category_ids=params_dict["category"],
+                                         rating_ids=params_dict["rating"],
+                                         archive_warning_ids=params_dict["warning"],
+                                         page=page + 1)
           pass
         pass
       
@@ -340,6 +369,7 @@ def scrape_search_pages(content, params_dict, batch_name, max_works):
     except requests.exceptions.ConnectionError:
       print("Connection error occurred while accessing page: {}".format(next_url))
       print("Last page attempted: {}".format(page))
+      pages_to_retry.append(old_next_url)
       # Make the loop condition invalid
       next_url = None
       pass
@@ -348,6 +378,7 @@ def scrape_search_pages(content, params_dict, batch_name, max_works):
       print("next_url: {}".format(next_url))
       print("old_next_url: {}".format(old_next_url))
       print("Last page attempted: {}".format(page))
+      pages_to_retry.append(old_next_url)
       # Make the loop condition invalid
       next_url = None
       pass
@@ -357,6 +388,7 @@ def scrape_search_pages(content, params_dict, batch_name, max_works):
     f.write(json.dumps(works, indent="  "))
     f.flush()
     pass
+  write_to_restart_from_file(pages_to_retry)
   print("Num works: {}".format(num_works))
   pass
 
@@ -453,8 +485,9 @@ if __name__ == '__main__':
   res = requests.get(url, headers=headers)
   fetch_time = get_timestamp()
   batch_name = "batch_" + fetch_time if not args.test_run else "test_" + fetch_time
+  restart_from_file = "restart_" + batch_name + ".txt"
   params_dict["fetch_time"] = fetch_time
   content = res.text
   max_works = args.max_works
   max_works = 100 if args.test_run and max_works < 0 else max_works
-  scrape_search_pages(content, params_dict, batch_name, max_works)
+  scrape_search_pages(content, params_dict, batch_name, max_works, restart_from_file=restart_from_file)
