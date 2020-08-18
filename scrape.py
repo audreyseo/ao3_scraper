@@ -8,7 +8,7 @@ import time
 import argparse
 from ao3_info import ao3_work_search_url
 import fandom_scrape
-
+from utils import VerifyPositiveIntAction
 
 ao3_home = "https://archiveofourown.org"
 
@@ -363,23 +363,58 @@ def scrape_search_pages(content, params_dict, batch_name, max_works):
 def get_argument_parser():
   # Commandline arguments
   parser = argparse.ArgumentParser()
-  parser.add_argument("-c", "--category", nargs="*", default=["FF"], help="List (without commas) of any of FF, MM, FM, Gen, Multi, or Other")
-  parser.add_argument("-r", "--rating", default="", help="Rating, if any, of content. Valid values are G, T, M, E, and NR")
-  parser.add_argument("-w", "--warning", nargs="*", default=[], help="List (without commas) of any of NAWA (No Archive Warnings Apply), RNC (Rape/Non-Con), MCD (Major Character Death), CNTUAW (Choose Not To Use Archive Warnings), and Underage")
-  parser.add_argument("-p", "--page", default=1, help="Which page of the search to start from")
-  # These aren't actually being implemented at the moment
+  parser.add_argument("-c", "--category",
+                      nargs="*",
+                      default=["FF"],
+                      help=("List (without commas) of any of FF, MM"\
+                            ", FM, Gen, Multi, or Other"))
+  parser.add_argument("-r", "--rating",
+                      default="",
+                      help=("Rating, if any, of content. Valid values "\
+                            "are G, T, M, E, and NR"))
+  parser.add_argument("-w", "--warning",
+                      nargs="*",
+                      default=[],
+                      help=("List (without commas) of any of NAWA "\
+                            "(No Archive Warnings Apply), RNC (Rape/Non-Con), "\
+                            "MCD (Major Character Death), CNTUAW "\
+                            "(Choose Not To Use Archive Warnings), and Underage"))
+  parser.add_argument("-p", "--page",
+                      default=1,
+                      type=int,
+                      action=VerifyPositiveIntAction,
+                      help="Which page of the search to start from")
+  # --end_page, --page_increment aren't actually being implemented at the moment
   # But they're here so that I can actually do something with them
   # soon hopefully
-  parser.add_argument("-e", "--end_page", default=-1, help="Which page to stop at. Use -1 to go to the end")
-  parser.add_argument("-m", "--max_works", default=-1, help="How many works' stats to include. -1 means all possible.")
-  parser.add_argument("--page_increment", default=1, help="Collect every nth page from a search, defaults to 1, i.e. collecting every page from a search.")
+  parser.add_argument("-e", "--end_page",
+                      default=-1,
+                      type=int,
+                      action=VerifyPositiveIntAction,
+                      help="Which page to stop at. Use -1 to go to the end")
+  parser.add_argument("-m", "--max_works",
+                      default=-1,
+                      type=int,
+                      action=VerifyPositiveIntAction,
+                      help="How many works' stats to include. -1 means all possible.")
+  parser.add_argument("--page_increment",
+                      default=1,
+                      type=int,
+                      help=("Collect every nth page from a search, "\
+                            "defaults to 1, i.e. collecting every page from a search."))
   parser.add_argument("--split_by",
                       default="none",
                       choices=["none", "fandoms"],
-                      help="Split a search over every searchable tag. Currently only supports search over all fandoms. (This helps to make a broad search more tractable)")
+                      help=("Split a search over every searchable tag. "\
+                            "Currently only supports search over all "\
+                            "fandoms. (This helps to make a broad search more tractable)"))
   parser.add_argument("--test_run",
                       action="store_true",
-                      help="Run a test by only collecting the first 100 works. Saves the resulting scraped data to a file(s) named test_[timestamp][number].json. To collect more or less works for your test run, set using -m/--max_works.")
+                      help=("Run a test by only collecting the first "\
+                            "100 works. Saves the resulting scraped "\
+                            "data to a file(s) named test_[timestamp][number].json. "\
+                            "To collect more or less works for your test "\
+                            "run, set using -m/--max_works."))
   return parser
 
 def get_timestamp():
@@ -420,5 +455,6 @@ if __name__ == '__main__':
   batch_name = "batch_" + fetch_time if not args.test_run else "test_" + fetch_time
   params_dict["fetch_time"] = fetch_time
   content = res.text
-  max_works = 100 if args.test_run else -1
+  max_works = args.max_works
+  max_works = 100 if args.test_run and max_works < 0 else max_works
   scrape_search_pages(content, params_dict, batch_name, max_works)
