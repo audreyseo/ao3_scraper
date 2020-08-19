@@ -306,8 +306,9 @@ def search_start(contents, works):
   return (next_url, problem)
 
 
-def scrape_search_pages(content, params_dict, batch_name, max_works, restart_from_file=None):
+def scrape_search_pages(content, params_dict, batch_name, max_works, restart_from_file=None, url_list=[]):
   works = []
+  using_from_file = len(url_list) > 0
   # make sure that params_dict is inside of works
   # so it's a part of the data that gets written
   works.append(params_dict)
@@ -360,7 +361,7 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
       content = res1.text
       old_next_url = next_url
       next_url, isProblem = search_start(content, works)
-      if next_url is None:
+      if next_url is None and not using_from_file:
         print("Last page!: {}".format(old_next_url))
         if isProblem:
           print("Left off trying to get page number {}".format(page))
@@ -372,6 +373,14 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
                                          page=page + 1)
           pass
         pass
+      elif using_from_file:
+        # Change next_url to the next url
+        if len(url_list) > 0:
+          next_url = url_list.pop(0)
+          pass
+        else:
+          # We're done
+          next_url = None
       
       counter += 1
       page += 1
@@ -401,7 +410,8 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
       pass
     except requests.exceptions.ConnectionError:
       print("Connection error occurred while accessing page: {}".format(next_url))
-      print("Last page attempted: {}".format(page))
+      if not using_from_file:
+        print("Last page attempted: {}".format(page))
       pages_to_retry.append(old_next_url)
       # Make the loop condition invalid
       next_url = None
@@ -410,7 +420,8 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
       print("Some other error occurred. Please try again.")
       print("next_url: {}".format(next_url))
       print("old_next_url: {}".format(old_next_url))
-      print("Last page attempted: {}".format(page))
+      if not using_from_file:
+        print("Last page attempted: {}".format(page))
       pages_to_retry.append(old_next_url)
       # Make the loop condition invalid
       next_url = None
@@ -533,7 +544,7 @@ if __name__ == '__main__':
   using_from_url = len(args.from_url) > 0
   using_from_file = len(args.from_url_file) > 0
   url_list = []
-  if using_from_file:
+  if using_from_file and (args.from_url_file.endswith(".json") or args.from_url_file.endswith(".txt")):
     # Ignore args.from_url
     using_from_url = False
     if os.path.exists(args.from_url_file):
@@ -552,6 +563,19 @@ if __name__ == '__main__':
         print("Did not find any URLs in file {}".format(args.from_url_file))
         print("Please check that you input the right file and try again.")
         sys.exit()
+        pass
+      pass
+    else:
+      # file does not exist, which is a Big Problem
+      print("Error - Could not find url file {}".format(args.from_url_file))
+      sys.exit()
+      pass
+    pass
+  elif using_from_file:
+    print("Error - Files passed to --from-url-file must end in .json or .txt, but found {}".format(args.from_url_file))
+    sys.exit()
+    pass
+  
         
 
   if using_from_url and not validate_ao3_search_url(args.from_url):
@@ -560,17 +584,28 @@ if __name__ == '__main__':
     print("Exiting now.")
     sys.exit()
     pass
+
+  if using_from_file:
+    params_dict["urls_from_file"] = url_list
   
   url = ao3_work_search_url(category_ids=args.category,
                             rating_ids=args.rating,
                             archive_warning_ids=args.warning,
-                            page=int(args.page)) if not using_from_url else args.from_url
-
+                            page=int(args.page)) if not using_from_url and not using_from_file else (args.from_url if using_from_url else url_list.pop(0))
+  
   # Save params url into params dict for good ole replicability purposes
-  params_dict["url"] = url
+  if not using_from_file:
+    params_dict["url"] = url
+    pass
+    
   if using_from_url:
     save_url_params(params_dict, url)
-  print(params_dict)
+    pass
+
+  # too much info lmao if there's a lot of urls
+  if not using_from_file:
+    print(params_dict)
+    pass
   #content = ""
   
   headers = {'user-agent' : ''}
@@ -586,4 +621,5 @@ if __name__ == '__main__':
                       params_dict,
                       batch_name,
                       max_works,
-                      restart_from_file=restart_from_file)
+                      restart_from_file=restart_from_file,
+                      url_list=url_list)
