@@ -11,6 +11,7 @@ from ao3_info import ao3_work_search_url, validate_ao3_search_url, save_url_para
 from utils import VerifyPositiveIntAction
 from urllib.parse import parse_qs
 from colors import color
+import os
 
 ao3_home = "https://archiveofourown.org"
 
@@ -320,6 +321,7 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
   page = params_dict["page"] + 1
   # assume the worst, lol
   failed_problematically = True
+  old_next_url = ""
 
   def write_to_restart_from_file(url_to_write):
     if restart_from_file is not None:
@@ -487,6 +489,18 @@ def get_argument_parser():
                             "alter what shows up in the params saved at the beginning of "\
                             "every batch file. Only parameters that can be altered via "\
                             "these command line optinos will be saved there."))
+  parser.add_argument("--from-url-file",
+                      default="",
+                      help=("Takes files either ending with .json or .txt. If ending in "\
+                            ".json, the program expects that the object contained will "\
+                            "have entries named \"params_dict\" and \"urls\", containing "\
+                            "a dictionary of the parameters that should be assigned to the "\
+                            "batch and a list of AO3 search URLs to scrape, respectively. "\
+                            "If it's a text file, the program expects just a list of AO3 "\
+                            "search URLs in the file. Note that as in --from-url, any "\
+                            "search parameters set using commandline options --rating, "\
+                            "--warning, etc. will be ignored. But additionally, --from-url "\
+                            "will also be ignored."))
   return parser
 
 def get_timestamp():
@@ -512,10 +526,33 @@ if __name__ == '__main__':
     "page_increment": args.page_increment,
     "split_by": args.split_by,
     "test_run": args.test_run,
-    "from_url": args.from_url
+    "from_url": args.from_url,
+    "from_url_file": args.from_url_file
   }
 
   using_from_url = len(args.from_url) > 0
+  using_from_file = len(args.from_url_file) > 0
+  url_list = []
+  if using_from_file:
+    # Ignore args.from_url
+    using_from_url = False
+    if os.path.exists(args.from_url_file):
+      with open(args.from_url_file, "r") as f:
+        text = f.read()
+        lines = text.split("\n")
+        url_list = [l for l in lines if l != ""]
+        pass
+      old_url_list = url_list
+      url_list = [u for u in url_list if validate_ao3_search_url(u)]
+      if len(old_url_list) > len(url_list):
+        print("Please note that {} out of {} of the urls in the file {} were invalid.".format(len(old_url_list) - len(url_list), len(old_url_list), args.from_url_file))
+        print("Invalid URLs:\n{}".format("\n".join([u for u in old_url_list if u not in url_list])))
+        print("Continuing without processing invalid URLs...")
+      if len(url_list) == 0:
+        print("Did not find any URLs in file {}".format(args.from_url_file))
+        print("Please check that you input the right file and try again.")
+        sys.exit()
+        
 
   if using_from_url and not validate_ao3_search_url(args.from_url):
     print(("The url \"{}\" is not a valid AO3 search url. "\

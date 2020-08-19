@@ -32,7 +32,7 @@ search_keys = [
 
 def get_search_parameters(url):
   query_dict = parse_qs(url, keep_blank_values=True)
-  print("{}".format(query_dict))
+  #print("{}".format(query_dict))
   ws = "work_search"
   find_key = re.compile(r"work_search\[([^\]]*)\]")
   return {find_key.sub(r"\1", k): v for k,v in query_dict.items() if find_key.match(k)}
@@ -42,7 +42,7 @@ def get_search_parameters(url):
 def validate_ao3_search_url(url):
   def split_fandom_names(entry):
     nonflat_entry = [e.split(',') for e in entry]
-    print('nonflat entry {}'.format(nonflat_entry))
+    #print('nonflat entry {}'.format(nonflat_entry))
     entry = []
     for sublist in nonflat_entry:
       for s in sublist:
@@ -60,11 +60,11 @@ def validate_ao3_search_url(url):
         names = names_json["names"]
         pass
       pass
-    if entry not in names:
+    """if entry not in names:
       print("Uh oh, fandom name {} not in list of all fandom names!".format(entry))
       pass
     else:
-      print("Good, fandom name {} in list of all fandom names!".format(entry))
+      print("Good, fandom name {} in list of all fandom names!".format(entry))"""
     return entry in names
   
   def validate_work_stats(entry):
@@ -97,17 +97,17 @@ def validate_ao3_search_url(url):
   valid_vals = {k: (v if k in ["single_chapter", "fandom_names"] else make_forall_predicate(v)) for k,v in valid_vals.items()}
 
   only_search_params = get_search_parameters(url)
-  print("{}".format(only_search_params))
+  #print("{}".format(only_search_params))
 
   for param in only_search_params:
     if param in valid_vals:
       validator = valid_vals[param]
       if not validator(only_search_params[param]):
-        print("Uh oh, found non-valid value(s) {} of parameter {}".format(only_search_params[param], param))
+        #print("Uh oh, found non-valid value(s) {} of parameter {}".format(only_search_params[param], param))
         return False
-      else:
-        print("Yay, valid value(s) {} of parameter {}".format(only_search_params[param], param))
-        pass
+      #else:
+      #  print("Yay, valid value(s) {} of parameter {}".format(only_search_params[param], param))
+      #  pass
       """
       for k in only_search_params[param]:
         # They're all lists, for some reason
@@ -121,7 +121,7 @@ def validate_ao3_search_url(url):
         pass"""
       pass
     pass
-  testing_true = [">100", "    >     3430920", "<100", "    <233420   ", "100-1000", "    123   -   12223", "1244950", " 1111 "]
+  """testing_true = [">100", "    >     3430920", "<100", "    <233420   ", "100-1000", "    123   -   12223", "1244950", " 1111 "]
   testing_false = [" 1000 0000", "<>10000", "<>", "<", ">", "10000>", "10000<", "-1000", "<-10000", ">-34930", "393993-"]
   for t in testing_true:
     if validate_work_stats(t):
@@ -138,7 +138,7 @@ def validate_ao3_search_url(url):
     else:
       print("Uh oh, expected \"{}\" to not be validated, but was valid".format(f))
       pass
-    pass
+    pass"""
   return True
 
 
