@@ -361,7 +361,7 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
       content = res1.text
       old_next_url = next_url
       next_url, isProblem = search_start(content, works)
-      if next_url is None and not using_from_file:
+      if next_url is None and (not using_from_file or isProblem):
         print("Last page!: {}".format(old_next_url))
         if isProblem:
           print("Left off trying to get page number {}".format(page))
@@ -370,7 +370,7 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
           next_url = ao3_work_search_url(category_ids=params_dict["category"],
                                          rating_ids=params_dict["rating"],
                                          archive_warning_ids=params_dict["warning"],
-                                         page=page + 1)
+                                         page=page + 1) if not using_from_file else url_list.pop(0)
           pass
         pass
       elif using_from_file:

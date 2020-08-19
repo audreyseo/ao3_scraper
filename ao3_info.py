@@ -240,7 +240,7 @@ def save_url_params(params_dict, url,
       params_dict["rating"] = ""
       pass
     pass
-  else:
+  elif save_rating_ids:
     params_dict["rating"] = ""
     pass
   if save_category_ids and "category_ids[]" in search_params:
@@ -258,7 +258,7 @@ def save_url_params(params_dict, url,
       params_dict["category"] = []
       pass
     pass
-  else:
+  elif save_category_ids:
     params_dict["category"] = []
     pass
   if save_archive_warning_ids and "archive_warning_ids[]" in search_params:
@@ -276,7 +276,7 @@ def save_url_params(params_dict, url,
       params_dict["warning"] = []
       pass
     pass
-  else:
+  elif save_archive_warning_ids:
     params_dict["warning"] = []
     pass
   pass

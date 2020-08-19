@@ -1,12 +1,13 @@
 import argparse
 import os
 import json
-from ao3_info import get_work_id
+from ao3_info import get_work_id, save_url_params
 from scrape import searchable_parameters, searchables_to_params_dict_keys
 import readline
 import time
 import glob
 import re
+import sys
 
 def get_bbase_ext(filename):
   base, ext = os.path.splitext(filename)
@@ -171,18 +172,107 @@ def collate(filename, collate_all=False):
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
-  parser.add_argument("action", choices=["collate", "stats"], help="Which action to take. collate takes all of the files from the same run and puts them together. stats will preform some rudimentary statistics on a given file.")
-  parser.add_argument("file", help="The name of the batch file to process")
+  parser.add_argument("action", choices=["collate", "stats", "convert_restart_file"], help="Which action to take. collate takes all of the files from the same run and puts them together. stats will preform some rudimentary statistics on a given file. convert_restart_file takes a json/txt file of urls that need to be re-scraped and turns it into an appropriately formatted txt/json file, respectively.")
+  parser.add_argument("file", help="The name of the batch (or restart) file to process")
   parser.add_argument("-a", "--all", action="store_true", help="Used only when collating. If present, then it will actually collate together all batch files run with the same search parameters. Otherwise, only files that have the same timestamp will be collated together.")
+  parser.add_argument("-r", "--rating", default="", choices=["", "G", "T", "M", "E", "NR"], help="Which rating to give a bunch of urls. Only used for converting .txt to json files, for convert_restart_file.")
+  parser.add_argument("-c", "--category", nargs="*", default=[], help="category(ies) to include in the resulting params_dict of a restart json file. Only used for converting .txt to json flies, for convert_restart_file. If not specified, automatically resorts to pulling the params from the urls themselves.")
+  
   
   #parser.add_argument("-h", "--help", help="Display help/usage details.")
   args = parser.parse_args()
 
+
+  print(args)
   # Add tab completion in the case of trying a different file name
   readline.set_completer_delims(' \t\n=')
   readline.parse_and_bind("tab: complete")
-  
-  if args.action == "collate":
+  if args.action=="convert_restart_file":
+    restart_file = args.file
+    base, ext = os.path.splitext(restart_file)
+    if ext != ".txt" and ext != ".json":
+      print("Restart files must be either txt or json files, but found {}".format(restart_file))
+      sys.exit()
+    params_dict = {}
+    urls = []
+    if restart_file.endswith(".txt"):
+      print("Ends with .txt")
+      params_dict = {
+        "category": args.category,
+        "rating": args.rating,
+        "warning": [],
+        "page": 1,
+        "end_page": -1,
+        "max_works": -1,
+        "page_increment": 1,
+        "split_by": "none",
+        "test_run": False,
+        "from_url": "",
+        "from_url_file": ""
+      }
+
+      with open(restart_file, "r") as f:
+        text = f.read()
+        lines = text.split("\n")
+        lines = [l.strip() for l in lines]
+        urls = [l for l in lines if l != ""]
+        pass
+      pass
+    elif restart_file.endswith(".json"):
+      with open(restart_file, "r") as f:
+        text = f.read()
+        j = json.loads(text)
+        if "params_dict" in j and "urls" in j:
+          params_dict = j["params_dict"]
+          urls = j["urls"]
+      pass
+
+    if len(urls) > 0:
+      print("Saving params...")
+      save_rating_ids = len(args.rating) == 0
+      save_category_ids = len(args.category) == 0
+      print("params_dict: {}".format(params_dict))
+      save_url_params(params_dict, urls[0],
+                      save_rating_ids=save_rating_ids,
+                      save_category_ids=save_category_ids)
+      print("params_dict: {}".format(params_dict))
+      pass
+    else:
+      print("No urls found in url file {}, please try again.".format(restart_file))
+      sys.exit()
+    
+    other_ext = ".json" if ext == ".txt" else ".txt"
+    newname = base + other_ext
+    userOK = not os.path.exists(newname)
+    while not userOK:
+      userInput = input("A file named {} already exists. Would you like to choose a new name? (y/n): ".format(newname))
+      userInput = userInput.lower()
+      if userInput == "y":
+        newname = input("Please enter a name ending in {}: ".format(other_ext))
+        userOK = not os.path.exists(newname)
+        pass
+      else:
+        newinput = input("Would you like to (1) quit or (2) continue without choosing a new name? (1/2): ")
+        if newinput == "1":
+          print("Okay, quitting now.")
+          sys.exit()
+          pass
+        elif newinput == "2":
+          print("Okay, continuing without choosing a new name.")
+          userOK = True
+          pass
+        pass
+      pass
+    with open(newname, "w") as f:
+      if restart_file.endswith(".txt"):
+        f.write(json.dumps({"params_dict": params_dict, "urls": urls}))
+        pass
+      else:
+        f.write("\n".join(urls) + "\n")
+        pass
+      f.flush()
+      pass
+  elif args.action == "collate":
     bbase, ext = get_bbase_ext(args.file)
     pickDiffFile = True
     quitting_out = False
