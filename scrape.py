@@ -521,7 +521,55 @@ def get_timestamp():
   fetch_time = fetch_time.replace(" ", "_")
   return fetch_time
 
-
+def get_url_list(params_dict, from_url_file):
+  url_list = []
+  is_json = from_url_file.endswith(".json")
+  if os.path.exists(from_url_file):
+    succeeded = True
+    obj = {}
+    with open(from_url_file, "r") as f:
+      text = f.read()
+      if is_json:
+        obj = json.loads(text)
+        if "params_dict" in obj and "urls" in obj:
+          params_dict = obj["params_dict"]
+          params_dict["loaded_from_url_file"] = True
+          url_list = obj["urls"]
+          pass
+        else:
+          succeeded = False
+          pass
+        pass
+      else:
+        # is .txt
+        lines = text.split("\n")
+        url_list = [l for l in lines if l != ""]
+        pass
+      pass
+    if not succeeded:
+      print("Make sure that \"params_dict\" and \"urls\" are both entries in your url file {}".format(from_url_file))
+      print("Could not find one of them. Please try again.")
+      sys.exit()
+      pass
+    old_url_list = url_list
+    url_list = [u for u in url_list if validate_ao3_search_url(u)]
+    if len(old_url_list) > len(url_list):
+      print("Please note that {} out of {} of the urls in the file {} were invalid.".format(len(old_url_list) - len(url_list), len(old_url_list), args.from_url_file))
+      print("Invalid URLs:\n{}".format("\n".join([u for u in old_url_list if u not in url_list])))
+      print("Continuing without processing invalid URLs...")
+      pass
+    if len(url_list) == 0:
+      print("Did not find any URLs in file {}".format(args.from_url_file))
+      print("Please check that you input the right file and try again.")
+      sys.exit()
+      pass
+    pass
+  else:
+    # file does not exist, which is a Big Problem
+    print("Error - Could not find url file {}".format(args.from_url_file))
+    sys.exit()
+    pass
+  return url_list
 if __name__ == '__main__':
   parser = get_argument_parser()
   
@@ -547,29 +595,7 @@ if __name__ == '__main__':
   if using_from_file and (args.from_url_file.endswith(".json") or args.from_url_file.endswith(".txt")):
     # Ignore args.from_url
     using_from_url = False
-    if os.path.exists(args.from_url_file):
-      with open(args.from_url_file, "r") as f:
-        text = f.read()
-        lines = text.split("\n")
-        url_list = [l for l in lines if l != ""]
-        pass
-      old_url_list = url_list
-      url_list = [u for u in url_list if validate_ao3_search_url(u)]
-      if len(old_url_list) > len(url_list):
-        print("Please note that {} out of {} of the urls in the file {} were invalid.".format(len(old_url_list) - len(url_list), len(old_url_list), args.from_url_file))
-        print("Invalid URLs:\n{}".format("\n".join([u for u in old_url_list if u not in url_list])))
-        print("Continuing without processing invalid URLs...")
-      if len(url_list) == 0:
-        print("Did not find any URLs in file {}".format(args.from_url_file))
-        print("Please check that you input the right file and try again.")
-        sys.exit()
-        pass
-      pass
-    else:
-      # file does not exist, which is a Big Problem
-      print("Error - Could not find url file {}".format(args.from_url_file))
-      sys.exit()
-      pass
+    url_list = get_url_list(params_dict, args.from_url_file)
     pass
   elif using_from_file:
     print("Error - Files passed to --from-url-file must end in .json or .txt, but found {}".format(args.from_url_file))
@@ -598,8 +624,17 @@ if __name__ == '__main__':
     params_dict["url"] = url
     pass
     
-  if using_from_url:
-    save_url_params(params_dict, url)
+  if using_from_url or using_from_file:
+    if "loaded_from_url_file" not in params_dict or not params_dict["loaded_from_url_file"]:
+      save_url_params(params_dict, url)
+      pass
+    elif using_from_file:
+      # Just save page number actually
+      save_url_params(params_dict,
+                      url,
+                      save_rating_ids=False,
+                      save_category_ids=False,
+                      save_archive_warning_ids=False)
     pass
 
   # too much info lmao if there's a lot of urls

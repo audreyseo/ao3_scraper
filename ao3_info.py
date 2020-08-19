@@ -204,7 +204,11 @@ id_to_warning = {
   "20": "Underage"
 }
 
-def save_url_params(params_dict, url):
+def save_url_params(params_dict, url,
+                    save_page=True,
+                    save_rating_ids=True,
+                    save_category_ids=True,
+                    save_archive_warning_ids=True):
   # looks at rating_ids          (rating)
   #          category_ids        (category)
   #          archive_warning_ids (warning)
@@ -212,12 +216,12 @@ def save_url_params(params_dict, url):
     print("Could not match value {} to an accepted value of {}! Expected: {}\n\tBad url: {}".format(value, param_name, [i for i in id_to_param], url))
   search_params = get_search_parameters(url)
   other_params = parse_qs(url)
-  if "page" in other_params:
+  if "page" in other_params and save_page:
     if len(other_params["page"]) >= 1:
       params_dict["page"] = int(other_params["page"][0])
       pass
     pass
-  if "rating_ids" in search_params:
+  if save_rating_ids and "rating_ids" in search_params:
     ratings = search_params["rating_ids"]
     if len(ratings) > 0 and len(ratings[0]) > 0:
       # cannot choose more than one rating
@@ -239,7 +243,7 @@ def save_url_params(params_dict, url):
   else:
     params_dict["rating"] = ""
     pass
-  if "category_ids[]" in search_params:
+  if save_category_ids and "category_ids[]" in search_params:
     keyname = "category_ids[]"
     category_ids = search_params[keyname]
     if len(category_ids) > 0:
@@ -257,7 +261,7 @@ def save_url_params(params_dict, url):
   else:
     params_dict["category"] = []
     pass
-  if "archive_warning_ids[]" in search_params:
+  if save_archive_warning_ids and "archive_warning_ids[]" in search_params:
     keyname = "archive_warning_ids[]"
     warning_ids = search_params[keyname]
     if len(warning_ids) > 0:
