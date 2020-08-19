@@ -1,6 +1,6 @@
 import os
 import re
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, quote_plus
 #from fandom_scrape import fandom_names_json_name
 import json
 #from functools import reduce
@@ -370,7 +370,7 @@ def ao3_work_search_url(query="",
     if search_key in keys_to_ids:
       if search_value in keys_to_ids[search_key]:
         return str(keys_to_ids[search_key][search_value])
-    return search_value
+    return quote_plus(search_value)
   
   for s in searches:
     
