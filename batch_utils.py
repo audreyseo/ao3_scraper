@@ -9,6 +9,15 @@ import glob
 import re
 import sys
 
+from datetime import datetime
+
+
+def get_last_updated_date(work):
+  if "last_updated" in work:
+    date_str = work["last_updated"]
+    return datetime.strptime(date_str, "%d %b %Y")
+  return None
+
 def get_bbase_ext(filename):
   base, ext = os.path.splitext(filename)
   bbase = base[:-1]
@@ -140,24 +149,41 @@ def collate(filename, collate_all=False, remove_anons=False):
     for i in reversed(anon_indices):
       works.pop(i)
   
-  seen_ids = []
+  seen_ids = {}
   indices_to_remove = []
   for i in range(1, len(works)):
     if "title_url" in works[i]:
       myid = get_work_id(works[i]["title_url"])
       if myid in seen_ids:
-        print("Found a duplicate of {}".format(works[i]["title"]))
-        indices_to_remove.append(i)
+        #print("Found a duplicate of {}".format(works[i]["title"]))
+        this_date = get_last_updated_date(works[i])
+        old_latest = seen_ids[myid]["latest_date"]
+        
+        if old_latest is not None and this_date is not None and old_latest < this_date:
+          # this_date is newer
+          seen_ids[myid]["indices"].append(seen_ids[myid]["latest_index"])
+          seen_ids[myid]["latest_index"] = i
+          seen_ids[myid]["latest_date"] = this_date
+          pass
+        else:
+          seen_ids[myid]["indices"].append(i)
+        #indices_to_remove.append(i)
         pass
       else:
         if len(myid) > 0:
-          seen_ids.append(myid)
+          seen_ids[myid] = {"indices": [], "latest_index": i, "latest_date": get_last_updated_date(works[i])}
       pass
     pass
+  for myid, obj in seen_ids.items():
+    indices_to_remove += obj["indices"]
+    
+  
   if len(indices_to_remove) > 0:
+    print("Found {} duplicates".format(len(indices_to_remove)))
     # remove them backwards
-    for i in range(len(indices_to_remove) - 1, -1, -1):
-      works.pop(indices_to_remove[i])
+    #for i in range(len(indices_to_remove) - 1, -1, -1):
+    for i in sorted(indices_to_remove, reverse=True):
+      works.pop(i)
       pass
     pass
   
@@ -292,7 +318,7 @@ if __name__ == '__main__':
     pickDiffFile = True
     quitting_out = False
     while os.path.exists(bbase + "_all" + ext) and pickDiffFile:
-      answer = input("A collated file {} already exists. Continue? (y/n): ")
+      answer = input("A collated file {} already exists. Continue? (y/n): ".format(bbase + "_all" + ext))
       if answer == "y":
         pickDiffFile = False
       elif answer == "n":
@@ -303,6 +329,7 @@ if __name__ == '__main__':
         else:
           print("Quitting now. Oops")
           quitting_out = True
+          sys.exit()
           pass
         pass
       pass
