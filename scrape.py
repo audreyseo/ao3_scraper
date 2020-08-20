@@ -378,6 +378,10 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
   # so it's a part of the data that gets written
   works.append(params_dict)
   page = params_dict["page"]
+  num_results = find_num_results(BeautifulSoup(content))
+  if num_results > 100000:
+    # AO3 only displays 100,000 results, max
+    print(color("Warning: this search has {} results, but only the first 100,000 can be scraped. Conisder narrowing your search if you want to scrape all of them.".format(num_results), fg="red"))
   next_url, problem = search_start(content, works, page)
   counter = 1
   dumps = 0
