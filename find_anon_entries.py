@@ -6,7 +6,8 @@ import time
 from ao3_info import ao3_work_search_url
 from scrape import search_start
 import requests
-
+from colors import color
+import sys
 
 def find_anon_works(batch_file_name):
   works = []
@@ -25,26 +26,77 @@ def find_anon_works(batch_file_name):
 
 
 def turn_anon_into_search_string(anon):
-  word_count = anon["words"]
+  word_count = (">" + str(int(anon["words"].replace(",", "")) - 1)) if not anon["complete"] else (anon["words"] if anon["words"] != "0" else "0-1")
   rating_ids = anon["rating"]
   #language_id = anon["language"]
   hits = anon["hits"]
   fandoms = ",".join([f[0] for f in anon["fandom"]])
   return ao3_work_search_url(rating_ids=rating_ids,
                              word_count=word_count,
-                             archive_warning_ids=anon["warnings"],
+                             category_ids=anon["category"],
+                             #archive_warning_ids=anon["warnings"],
                              #language_id=language_id,
-                             hits=">" + str(int(hits) - 1),
+                             #hits=">" + str(int(hits) - 1),
+                             character_names=",".join([character[0] for character in anon["characters"]]),
+                             freeform_names=",".join([tag[0] for tag in anon["tags"]]),
                              fandom_names=fandoms)
 
+
+def read_json(file_name):
+  obj = {}
+  with open(file_name, "r") as f:
+    obj = json.loads(f.read())
+  return obj
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
 
+  parser.add_argument("action", choices=["scrape", "intersection"])
+
   parser.add_argument("file", help=("The first of many batch files to look through for missed anonymous works"))
+
+  parser.add_argument("--other-file", help=("The file to intersect with"))
   args = parser.parse_args()
   counter = 0
   fname = args.file
+
+  if args.action == "intersection":
+    oname = args.other_file
+    if os.path.exists(fname) and os.path.exists(oname):
+      anons1 = read_json(fname)
+      anons2 = read_json(oname)
+      fetch_time = time.ctime(time.time())
+      fetch_time = fetch_time.replace(":", ".")
+      fetch_time = fetch_time.replace(" ", "_")
+      if "urls" in anons1 and "urls" in anons2 and ("params_dict" in anons1 and "params_dict" in anons2):
+        params_dict1 = anons1["params_dict"]
+        params_dict2 = anons2["params_dict"]
+        for k in params_dict1:
+          if k not in params_dict2:
+            params_dict2[k] = ""
+        for k in params_dict2:
+          if k not in params_dict1:
+            params_dict1[k] = ""
+        params_dict = {k: [params_dict1[k], params_dict2[k]] for k in params_dict1} if params_dict1 != params_dict2 else params_dict1
+        works1 = [a[0] for a in anons1["urls"]]
+        works2 = [a[0] for a in anons2["urls"]]
+        intersection = [w for w in works1 if w in works2]
+        print("Most ambiguous anons: {}".format(len(intersection)))
+        if len(intersection) > 0:
+          with open("stubbornest_anons_" + fetch_time + ".json", "w") as f:
+            f.write(json.dumps([params_dict] + intersection, indent="  "))
+            f.flush()
+            pass
+          pass
+        pass
+      pass
+    else:
+      print("Warning: one of the files {} and {} does not exist".format(fname, oname))
+      pass
+    sys.exit()
+    pass
+        
+  
 
   base, ext = os.path.splitext(fname)
   bbase = base[:-1]
@@ -57,11 +109,12 @@ if __name__ == "__main__":
     if not params:
       print("params is empty, filling params now")
       params = pms
+      pass
     anons += wks
     counter += 1
     cur_file = bbase + str(counter) + ext
     pass
-  searches = [turn_anon_into_search_string(a) for a in anons]
+  searches = [(a, turn_anon_into_search_string(a)) for a in anons]
 
   fetch_time = time.ctime(time.time())
   fetch_time = fetch_time.replace(":", ".")
@@ -77,8 +130,8 @@ if __name__ == "__main__":
 
   dumps = 0
 
-  with open("anons_dump.txt", "w") as f:
-    f.write("\n".join(searches) + "\n")
+  with open("anons_dump.json", "w") as f:
+    f.write(json.dumps([[a,s] for a,s in searches], indent="  "))
     f.flush()
     pass
 
@@ -87,7 +140,7 @@ if __name__ == "__main__":
 
   print("Retrieving anons' information...")
   counter = 0
-  for a in searches:
+  for info, a in searches:
     time.sleep(5)
     try:
       res = requests.get(a, headers={"user-agent": ""})
@@ -102,18 +155,18 @@ if __name__ == "__main__":
       next_url, is_problem = search_start(res.text, temp_works)
       if is_problem and len(temp_works) == 0:
         print("Uh oh, anon failed.")
-        failed_anons.append(a)
+        failed_anons.append([info, a])
         pass
       elif len(temp_works) == 1:
         print("Got just the right number of works")
         works += temp_works
         pass
       elif len(temp_works) >= 2:
-        print("Search {} brought up ambiguous results. May need to be refined.".format(a))
-        ambiguous_anons.append(a)
+        print("Found {} works, instead of just one: Search {} brought up ambiguous results. May need to be refined.".format(len(temp_works), color(a, fg="blue")))
+        ambiguous_anons.append([info, a])
         pass
-      if len(works) > 1 and (len(works) - 1) % 5 == 0:
-        print("Done with {} works".format(counter))
+      if counter % 5 == 0:
+        print("Done with {} works, {} ambiguous anons, and {} failed anons".format(len(works), len(ambiguous_anons), len(failed_anons)))
       if len(works) > 1 and (len(works) - 1) % 2000 == 0:
         print("Writing out some works...")
         with open(batch_name + str(dumps) + ".json", "w") as f:
