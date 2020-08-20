@@ -399,16 +399,16 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
   pages_to_retry = []
   
   while next_url is not None and not_done_yet():
-    # 5 seconds in between requests, per AO3 terms of service
-    # had to reference another implementation:
-    # https://github.com/radiolarian/AO3Scraper/blob/master/ao3_work_ids.py
-    # to figure this out
-    # Though I also could no longer find any reference to this in the AO3
-    # terms of service anymore (though I could have sworn it used to be in there)
-    time.sleep(5)
 
     # Need try catch since sometimes it doesn't work right
     try:
+      # 5 seconds in between requests, per AO3 terms of service
+      # had to reference another implementation:
+      # https://github.com/radiolarian/AO3Scraper/blob/master/ao3_work_ids.py
+      # to figure this out
+      # Though I also could no longer find any reference to this in the AO3
+      # terms of service anymore (though I could have sworn it used to be in there)
+      time.sleep(5)
       res1 = requests.get(next_url, headers=headers)
       content = res1.text
       old_next_url = next_url
@@ -467,6 +467,17 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
       pages_to_retry.append(old_next_url)
       # Make the loop condition invalid
       next_url = None
+      pass
+    except KeyboardInterrupt:
+      print("")
+      print(color("Program interrupted.", fg="red"))
+      print("Scraped {} works".format(get_num_collected()))
+      print("Left off at page:\n{}".format(next_url))
+      if not using_from_file:
+        print("Page number last attempted: {}".format(page))
+      # make the loop condition invalid
+      next_url = None
+      print("Quitting now...")
       pass
     except:
       print("Some other error occurred. Please try again.")
