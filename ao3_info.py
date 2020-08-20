@@ -37,7 +37,17 @@ def get_search_parameters(url):
   find_key = re.compile(r"work_search\[([^\]]*)\]")
   return {find_key.sub(r"\1", k): v for k,v in query_dict.items() if find_key.match(k)}
   
-
+sort_column_keys = ["_score",
+                    "authors_to_sort_on",
+                    "title_to_sort_on",
+                    "created_at",
+                    "revised_at",
+                    "word_count",
+                    "hits",
+                    "kudos_count",
+                    "comments_count",
+                    "bookmarks_count"]
+sort_direction_keys = ["", "asc", "desc"]
 
 def validate_ao3_search_url(url):
   def split_fandom_names(entry):
@@ -319,8 +329,8 @@ def ao3_work_search_url(query="",
                         kudos_count="",
                         comments_count="",
                         bookmarks_count="",
-                        sort_column="_score",
-                        sort_direction="desc",
+                        sort_column="created_at",
+                        sort_direction="asc",
                         page=1):
   keys = {
     "query": query,
