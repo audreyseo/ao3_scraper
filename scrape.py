@@ -197,12 +197,16 @@ def get_stats(work_tag):
     return (lang, words, chapters, max_chapters, hits)
   return ("FAILURE", "FAILURE", "FAILURE", "FAILURE", "FAILURE")
 
-def get_next_url(soup):
+def get_next_url(soup, page, max_page, num_results):
   def shorten(mystr):
     if len(mystr) > 100:
       last_50 = max(51, len(mystr)-50)
       return mystr[:50] + "\n<!-- Omitting lots and lots of HTML and other output... -->\n" + mystr[last_50:]
     return mystr
+  if num_results <= 20:
+    # It is not a problem that there is no next
+    return (None, False)
+  
   find = find_of_classes(soup, "li", "next")
   if find is not None:
     oldFind = find
@@ -217,8 +221,14 @@ def get_next_url(soup):
         return (None, False)
       pass
     pass
-  print("Uh oh, no more next in soup!:\n{}".format(color(shorten(soup.prettify()), fg="blue")))
-  return (None, True)
+  if max_page > -1 and page < max_page:
+    print("Uh oh, no more next in soup!:\n{}".format(color(shorten(soup.prettify()), fg="blue")))
+    return (None, True)
+  else:
+    # There probably shouldn't be a next in this case
+    print("Did not find next. Please verify if okay:\n{}".format(color(shorten(soup.prettify()), fg="blue")))
+    return (None, True)
+    
   
 
 
@@ -254,29 +264,6 @@ searchables_to_params_dict_keys = {
   "category": "category"
 }
 
-def find_max_page(soup):
-  def find_next_index(li_list):
-    for i in range(len(li_list)):
-      if has_class(li_list[i]):
-        if "next" in li_list[i]["class"]:
-          return i
-        pass
-      pass
-    return -1
-  paginations = find_all_of_classes(soup, "ol", "pagination", "actions")
-  if len(paginations) >= 1:
-    assert len(paginations) == 1
-    pages = paginations[0]("li")
-    next_index = find_next_index(pages)
-    last_page_index = next_index - 1
-    last_page = pages[last_page_index]
-    inside = last_page.find("a")
-    inside = inside if inside is not None else last_page.find("span")
-    # inside should have a string if it isn't none
-    return -1 if inside is None else int(str(inside.string))
-  print("Found no paginations, so either an error occurred or this is the only page, or both.")
-  return 1
-
 def find_num_results(soup):
   results_found = re.compile("\s*(\d+)\s+Found\s*")
   candidates = find_all_of_classes(soup, "h3", "heading")
@@ -295,7 +282,35 @@ def find_num_results(soup):
   #print("strings: {}".format(candidates))
   return -1
 
-def search_start(contents, works):
+def find_max_page(soup):
+  def find_next_index(li_list):
+    for i in range(len(li_list)):
+      if has_class(li_list[i]):
+        if "next" in li_list[i]["class"]:
+          return i
+        pass
+      pass
+    return -1
+  num_results = find_num_results(soup)
+  if num_results > -1 and num_results <= 20:
+    return 1
+  paginations = find_all_of_classes(soup, "ol", "pagination", "actions")
+  if len(paginations) >= 1:
+    assert len(paginations) == 1
+    pages = paginations[0]("li")
+    next_index = find_next_index(pages)
+    last_page_index = next_index - 1
+    last_page = pages[last_page_index]
+    inside = last_page.find("a")
+    inside = inside if inside is not None else last_page.find("span")
+    # inside should have a string if it isn't none
+    return -1 if inside is None else int(str(inside.string))
+  print("Found no paginations, so either an error occurred or this is the only page, or both.")
+  return 1
+
+
+
+def search_start(contents, works, page):
   '''Given the contents as a string of a search page and an array for works,
      returns the next url in the sequence of url's to look at, and whether or
      not the next url being None is a problem (if the next url is None and
@@ -306,7 +321,7 @@ def search_start(contents, works):
   soup = BeautifulSoup(contents, "html.parser")
   max_page = find_max_page(soup)
   num_results = find_num_results(soup)
-  next_url, problem = get_next_url(soup)
+  
   
   
   #print("Max page: {}".format(find_max_page(soup)))
@@ -351,6 +366,7 @@ def search_start(contents, works):
                             max_chapters=max_chapters,
                             hits=hits))
   #return (next_url, problem, max_page)
+  next_url, problem = get_next_url(soup, page, max_page, num_results)
   return (next_url, problem)
 
 
@@ -361,7 +377,8 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
   # make sure that params_dict is inside of works
   # so it's a part of the data that gets written
   works.append(params_dict)
-  next_url, problem = search_start(content, works)
+  page = params_dict["page"]
+  next_url, problem = search_start(content, works, page)
   counter = 1
   dumps = 0
   num_works = 0
@@ -371,7 +388,7 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
   def not_done_yet():
     return max_works <= 0 or get_num_collected() < max_works
   
-  page = params_dict["page"] + 1
+  page += 1
   # assume the worst, lol
   failed_problematically = True
   old_next_url = ""
@@ -412,7 +429,7 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
       res1 = requests.get(next_url, headers=headers)
       content = res1.text
       old_next_url = next_url
-      next_url, isProblem = search_start(content, works)
+      next_url, isProblem = search_start(content, works, page)
       if next_url is None and (not using_from_file or isProblem):
         print("Last page!: {}".format(old_next_url))
         if isProblem:
