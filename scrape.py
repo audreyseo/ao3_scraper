@@ -253,6 +253,29 @@ searchables_to_params_dict_keys = {
   "category": "category"
 }
 
+def find_max_page(soup):
+  def find_next_index(li_list):
+    for i in range(len(li_list)):
+      if has_class(li_list[i]):
+        if "next" in li_list[i]["class"]:
+          return i
+        pass
+      pass
+    return -1
+  paginations = find_all_of_classes(soup, "ol", "pagination", "actions")
+  if len(paginations) >= 1:
+    assert len(paginations) == 1
+    pages = paginations[0]("li")
+    next_index = find_next_index(pages)
+    last_page_index = next_index - 1
+    last_page = pages[last_page_index]
+    inside = last_page.find("a")
+    inside = inside if inside is not None else last_page.find("span")
+    # inside should have a string if it isn't none
+    return -1 if inside is None else int(str(inside.string))
+  print("Found no paginations, so either an error occurred or this is the only page, or both.")
+  return 1
+
 
 def search_start(contents, works):
   '''Given the contents as a string of a search page and an array for works,
@@ -263,7 +286,11 @@ def search_start(contents, works):
      there must have been some sort of issue with parsing the page.
   '''
   soup = BeautifulSoup(contents, "html.parser")
+  max_page = find_max_page(soup)
   next_url, problem = get_next_url(soup)
+  
+  #print("Max page: {}".format(find_max_page(soup)))
+  
   #print(soup.prettify())
   raw_works = soup.find_all("li")
   raw_works = [t for t in raw_works if is_work(t)]
@@ -303,7 +330,8 @@ def search_start(contents, works):
                             chapters=chapters,
                             max_chapters=max_chapters,
                             hits=hits))
-  return (next_url, problem)
+  return (next_url, problem, max_page)
+
 
 
 def scrape_search_pages(content, params_dict, batch_name, max_works, restart_from_file=None, url_list=[]):
