@@ -75,7 +75,7 @@ def get_files_to_collate(filename, collate_all):
       pass
     pass
   return filenames, duplicate_filenames
-def collate(filename, collate_all=False):
+def collate(filename, collate_all=False, remove_anons=False):
   base, ext = os.path.splitext(filename)
   if ext != ".json":
     return None
@@ -131,6 +131,15 @@ def collate(filename, collate_all=False):
     works[0]["included_batch_files"].append(f)
     #f = bbase + strindex() + ext
     pass
+  # OOPS, forgot about this
+  works[0]["included_batch_files"] += dupes
+  if remove_anons:
+    #anon_indices = []
+    anon_indices = [i for i in range(1, len(works)) if works[i]["title"] is None and works[i]["author"] is None]
+    print("Found {} anonymous indices".format(len(anon_indices)))
+    for i in reversed(anon_indices):
+      works.pop(i)
+  
   seen_ids = []
   indices_to_remove = []
   for i in range(1, len(works)):
@@ -140,6 +149,9 @@ def collate(filename, collate_all=False):
         print("Found a duplicate of {}".format(works[i]["title"]))
         indices_to_remove.append(i)
         pass
+      else:
+        if len(myid) > 0:
+          seen_ids.append(myid)
       pass
     pass
   if len(indices_to_remove) > 0:
@@ -177,6 +189,8 @@ if __name__ == '__main__':
   parser.add_argument("-a", "--all", action="store_true", help="Used only when collating. If present, then it will actually collate together all batch files run with the same search parameters. Otherwise, only files that have the same timestamp will be collated together.")
   parser.add_argument("-r", "--rating", default="", choices=["", "G", "T", "M", "E", "NR"], help="Which rating to give a bunch of urls. Only used for converting .txt to json files, for convert_restart_file.")
   parser.add_argument("-c", "--category", nargs="*", default=[], help="category(ies) to include in the resulting params_dict of a restart json file. Only used for converting .txt to json flies, for convert_restart_file. If not specified, automatically resorts to pulling the params from the urls themselves.")
+
+  parser.add_argument('--remove-anons', action="store_true", help=("Used only when collating. If present, it will remove all entries where the title and author are None/null"))
   
   
   #parser.add_argument("-h", "--help", help="Display help/usage details.")
@@ -229,6 +243,7 @@ if __name__ == '__main__':
 
     if len(urls) > 0:
       print("Saving params...")
+      
       save_rating_ids = len(args.rating) == 0
       save_category_ids = len(args.category) == 0
       print("params_dict: {}".format(params_dict))
@@ -293,6 +308,6 @@ if __name__ == '__main__':
       pass
     
     if not quitting_out:
-      dest = collate(args.file, collate_all = args.all)
+      dest = collate(args.file, collate_all = args.all, remove_anons=args.remove_anons)
       print("Collated in {}".format(dest))
       pass
