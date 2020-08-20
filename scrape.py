@@ -330,7 +330,8 @@ def search_start(contents, works):
                             chapters=chapters,
                             max_chapters=max_chapters,
                             hits=hits))
-  return (next_url, problem, max_page)
+  #return (next_url, problem, max_page)
+  return (next_url, problem)
 
 
 
@@ -346,6 +347,9 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
   num_works = 0
   def get_num_collected():
     return (len(works) - 1) + num_works
+
+  def not_done_yet():
+    return max_works <= 0 or get_num_collected() < max_works
   
   page = params_dict["page"] + 1
   # assume the worst, lol
@@ -374,7 +378,7 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
 
   pages_to_retry = []
   
-  while next_url is not None:
+  while next_url is not None and not_done_yet():
     # 5 seconds in between requests, per AO3 terms of service
     # had to reference another implementation:
     # https://github.com/radiolarian/AO3Scraper/blob/master/ao3_work_ids.py
