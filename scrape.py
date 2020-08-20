@@ -12,6 +12,7 @@ from utils import VerifyPositiveIntAction
 from urllib.parse import parse_qs
 from colors import color
 import os
+import re
 
 ao3_home = "https://archiveofourown.org"
 
@@ -276,6 +277,23 @@ def find_max_page(soup):
   print("Found no paginations, so either an error occurred or this is the only page, or both.")
   return 1
 
+def find_num_results(soup):
+  results_found = re.compile("\s*(\d+)\s+Found\s*")
+  candidates = find_all_of_classes(soup, "h3", "heading")
+  candidates = [c for c in candidates if has_class(c) and len(c["class"]) == 1]
+  if len(candidates) == 1:
+    candidate = candidates[0]
+    for c in candidate.contents:
+      #print(c)
+      if results_found.match(str(c)):
+       # print("Found match: {}".format(c))
+        num_results = results_found.sub(r"\1", str(c))
+        #print("Results found: {}".format(num_results))
+        return int(num_results)
+  print(color("Warning: could not find number of results", fg="red"))
+  #print("strings length: {}".format(len(candidates)))
+  #print("strings: {}".format(candidates))
+  return -1
 
 def search_start(contents, works):
   '''Given the contents as a string of a search page and an array for works,
@@ -287,7 +305,9 @@ def search_start(contents, works):
   '''
   soup = BeautifulSoup(contents, "html.parser")
   max_page = find_max_page(soup)
+  num_results = find_num_results(soup)
   next_url, problem = get_next_url(soup)
+  
   
   #print("Max page: {}".format(find_max_page(soup)))
   
