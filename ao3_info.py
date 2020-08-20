@@ -305,8 +305,8 @@ needs_double_brackets = [
 def get_work_id(title_url):
   myid = os.path.basename(title_url)
   #print("myid: {}".format(myid))
-  if re.match("^\d+$", myid):
-    return myid
+  if re.match(r"^\d+$", myid):
+    return myid.strip()
   return None
 
 def ao3_work_search_url(query="",

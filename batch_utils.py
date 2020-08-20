@@ -49,10 +49,12 @@ def get_files_to_collate(filename, collate_all):
           works = json.loads(f.read())
           batch_params = works[0]
           pass
-        for p in searchable_parameters:
+        for param, p in searchables_to_params_dict_keys.items():
           if p in params:
             should_add = should_add and p in batch_params and params[p] == batch_params[p]
             pass
+          else:
+            should_add = False
           pass
         if should_add:
           exclude = exclude + add_files_to_exclude(batch_params)
@@ -62,16 +64,18 @@ def get_files_to_collate(filename, collate_all):
         pass
       pass
     inds_to_remove = []
-    print("Exclude: {}".format(exclude))
-    print("Filenames: {}".format(filenames))
+    
     for i in range(len(filenames)):
       if filenames[i] in exclude:
         inds_to_remove.append(i)
         pass
       pass
-    for i in inds_to_remove[-1:]:
-      print("indices to remove: {}".format(i))
+    for i in reversed(inds_to_remove):
+      #print("indices to remove: {}".format(i))
       duplicate_filenames.append(filenames.pop(i))
+      pass
+    print("Exclude: {}".format(exclude))
+    print("Filenames: {}".format(filenames))
     pass
   else:
     bbase, ext = get_bbase_ext(filename)
@@ -114,7 +118,7 @@ def collate(filename, collate_all=False, remove_anons=False):
           works[0]["included_batch_files"] = dupes
           pass
         else:
-          for d in dupe_files:
+          for d in dupes:
             if d not in works[0]["included_batch_files"]:
               works[0]["included_batch_files"].append(d)
               pass
@@ -167,13 +171,24 @@ def collate(filename, collate_all=False, remove_anons=False):
           pass
         else:
           seen_ids[myid]["indices"].append(i)
+          pass
         #indices_to_remove.append(i)
         pass
       else:
-        if len(myid) > 0:
+        if myid is not None and len(myid) > 0:
           seen_ids[myid] = {"indices": [], "latest_index": i, "latest_date": get_last_updated_date(works[i])}
+          pass
+        else:
+          print("Weird, got 0-length id:\n{}".format(json.dumps(works[i], indent="  ")))
+          pass
+      pass
+    else:
+      print("Weird, one of the works did not have a title url:\n{}".format(json.dumps(works[i], indent="  ")))
       pass
     pass
+
+  print(len(seen_ids.keys()))
+  
   for myid, obj in seen_ids.items():
     indices_to_remove += obj["indices"]
     
