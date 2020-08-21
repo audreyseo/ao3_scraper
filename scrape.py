@@ -197,6 +197,13 @@ def get_stats(work_tag):
     return (lang, words, chapters, max_chapters, hits)
   return ("FAILURE", "FAILURE", "FAILURE", "FAILURE", "FAILURE")
 
+def abbreviate_soup(soup):
+  mystr = str(soup) if not isinstance(soup, str) else soup
+  if len(mystr) > 100:
+    last_50 = max(51, len(mystr)-50)
+    return mystr[:50] + "\n<!-- Omitting lots and lots of HTML and other output... -->\n" + mystr[last_50:]
+  return mystr
+
 def get_next_url(soup, page, max_page, num_results):
   def shorten(mystr):
     if len(mystr) > 100:
@@ -299,6 +306,15 @@ def find_max_page(soup):
         pass
       pass
     return -1
+  if isinstance(soup, str):
+    # in this case, soup is content instead
+    soup = BeautifulSoup(soup, "html.parser")
+    '''if len(soup.attrs.keys()) == 0:
+      # Houston, we have a problem
+      # This is most likely a case of "Retry later"
+      eprint("Warning: soup is weirdly empty.")
+      print("Abbreviated soup:\n{}".format(color(abbreviate_soup(soup), fg="blue")))
+      return -1'''
   num_results = find_num_results(soup)
   if num_results > -1 and num_results <= 20:
     return 1
@@ -395,7 +411,9 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
     eprint("Error: cannot use an end_page {} that is smaller than the starting page number {}".format(end_page, page))
     eprint("       Please check that the commandline arguments you entered were correct.")
     return
-  num_results = find_num_results(BeautifulSoup(content))
+
+  max_page_number = find_max_page(content)
+  num_results = find_num_results(BeautifulSoup(content, "html.parser"))
   if num_results > 100000:
     # AO3 only displays 100,000 results, max
     print(color("Warning: this search has {} results, but only the first 100,000 can be scraped. Conisder narrowing your search if you want to scrape all of them.".format(num_results), fg="red"))
@@ -428,7 +446,14 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
       pass
     pass
   else:
-    page += 1
+    if max_page_number <= 0 or page <= max_page_number:
+      page += 1
+      pass
+    elif max_page_number > 0 and page > max_page_number:
+      # We need to stop
+      eprint("Went past the last recorded maximimum page number, {}".format(max_page_number))
+      eprint("Quitting now...")
+      next_url = None
     pass
   # assume the worst, lol
   failed_problematically = True
@@ -477,11 +502,15 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
           print("Left off trying to get page number {}".format(page))
           # TRYING THIS, DUNNO IF IT WILL WORK
           pages_to_retry.append(old_next_url)
-          next_url = ao3_work_search_url(category_ids=params_dict["category"],
-                                         rating_ids=params_dict["rating"],
-                                         archive_warning_ids=params_dict["warning"],
-                                         page=page + 1,
-                                         word_count=params_dict["query"]) if not using_from_file else url_list.pop(0)
+          if max_page_number > 0 and page + 1 <= max_page_number and not using_from_file:
+            next_url = ao3_work_search_url(category_ids=params_dict["category"],
+                                           rating_ids=params_dict["rating"],
+                                           archive_warning_ids=params_dict["warning"],
+                                           page=page + 1,
+                                           word_count=params_dict["query"])
+            pass
+          elif using_from_file and len(url_list) > 0:
+            next_url = url_list.pop(0)
           pass
         pass
       elif using_from_file:
@@ -494,6 +523,12 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
           next_url = None
       
       counter += 1
+
+      if (counter % 5) == 0 or page >= max_page_number - 10:
+        new_max = find_max_page(content)
+        if new_max > 0 and new_max > max_page_number:
+          print("Updating max page number from {} to {}...".format(max_page_number, new_max))
+          max_page_number = new_max
 
       if using_end_page and page >= end_page:
         # STOP, we've already done the last page
@@ -524,10 +559,12 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
           print("Popping off: {}".format(works.pop(len(works) - 1)))
           pass
         pass
+
+      
       
       if (counter % 5) == 0:
         if not using_from_file:
-          print("Done with {}".format(counter))
+          print("Done with {}, finished page number {}".format(counter, ("{} out of {}".format(page-1, max_page_number)) if max_page_number > 0 else (page - 1)))
           pass
         else:
           print("Done with {} out of {}".format(counter, num_urls))
