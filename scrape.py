@@ -264,6 +264,12 @@ searchables_to_params_dict_keys = {
   "category": "category"
 }
 
+ao3_params_to_searchables = {
+  "rating_ids": "rating",
+  "category_ids": "category",
+  "archive_warning_ids": "warnings"
+}
+
 def find_num_results(soup):
   results_found = re.compile("\s*(\d+)\s+Found\s*")
   candidates = find_all_of_classes(soup, "h3", "heading")

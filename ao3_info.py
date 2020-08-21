@@ -165,6 +165,14 @@ rating_to_id = {
   "NR": 9
 }
 
+rating_to_abbreviation = {
+  "M": "Mature",
+  "E": "Explicit",
+  "NR": "Not Rated",
+  "T": "Teen",
+  "G": "General Audiences"
+}
+
 id_to_rating = {
   "9": "NR",
   "10": "G",
@@ -194,6 +202,16 @@ id_to_category = {
   "24": "Other"
 }
 
+category_to_abbreviation = {
+  "FF": "F/F",
+  "MM": "M/M",
+  "FM": "F/M",
+  "Gen": "Gen",
+  "Multi": "Multi",
+  "Other": "Other"
+}
+
+
 warning_to_id = {
   "No Archive Warnings Apply": 16,
   "NAWA": 16,
@@ -203,7 +221,9 @@ warning_to_id = {
   "MCD": 18,
   "Choose Not To Use Archive Warnings": 14,
   "CNTUAW": 14,
-  "Underage": 20
+  "Underage": 20,
+  "Graphic Depictions Of Violence": 17,
+  "GDOV": 17
 }
 
 id_to_warning = {
@@ -211,7 +231,8 @@ id_to_warning = {
   "19": "RNC",
   "18": "MCD",
   "14": "CNTUAW",
-  "20": "Underage"
+  "20": "Underage",
+  "17": "GDOV"
 }
 
 def save_url_params(params_dict, url,
