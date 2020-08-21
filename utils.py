@@ -1,5 +1,12 @@
 import argparse
+import sys
+from colors import color
 
+# Largely taken from https://stackoverflow.com/questions/5574702/how-to-print-to-stderr-in-python
+# Though I added the colorization
+def eprint(*args, **kwargs):
+  args = [(color(arg, fg="red") if isinstance(arg, str) else arg) for arg in args]
+  print(*args, file=sys.stderr, **kwargs)
 
 
 class VerifyPositiveIntAction(argparse.Action):
@@ -20,3 +27,5 @@ class VerifyPositiveIntAction(argparse.Action):
       pass
     else:
       raise ValueError("value {} invalid, expected an int, but found {}".format(values, type(values)))
+
+

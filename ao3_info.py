@@ -235,6 +235,29 @@ id_to_warning = {
   "17": "GDOV"
 }
 
+
+def get_page_number(src):
+  if isinstance(src, dict):
+    if "page" in src:
+      if isinstance(src["page"], list):
+        if len(src["page"]) >= 1:
+          return int(src["page"][0])
+        pass
+      else:
+        return int(src["page"])
+      pass
+    else:
+      # Page wouldn't be a parse_qs dict if it was the first page
+      # in the search
+      return 1
+    pass
+  elif isinstance(src, str):
+    if validate_ao3_search_url(src):
+      params = parse_qs(src)
+      return get_page_number(params)
+    pass
+  return -1
+
 def save_url_params(params_dict, url,
                     save_page=True,
                     save_rating_ids=True,
@@ -245,13 +268,21 @@ def save_url_params(params_dict, url,
   #          archive_warning_ids (warning)
   def alert_to_error(param_name, value, id_to_param):
     print("Could not match value {} to an accepted value of {}! Expected: {}\n\tBad url: {}".format(value, param_name, [i for i in id_to_param], url))
+    pass
   search_params = get_search_parameters(url)
   other_params = parse_qs(url)
-  if "page" in other_params and save_page:
+  if save_page:
+    page = get_page_number(other_params)
+    if page != -1:
+      params_dict["page"] = page
+      pass
+    pass
+  
+  '''if "page" in other_params and save_page:
     if len(other_params["page"]) >= 1:
       params_dict["page"] = int(other_params["page"][0])
       pass
-    pass
+    pass'''
   if save_rating_ids and "rating_ids" in search_params:
     ratings = search_params["rating_ids"]
     if len(ratings) > 0 and len(ratings[0]) > 0:

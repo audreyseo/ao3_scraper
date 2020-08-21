@@ -6,9 +6,9 @@ from bs4 import BeautifulSoup
 import json
 import time
 import argparse
-from ao3_info import ao3_work_search_url, validate_ao3_search_url, save_url_params
+from ao3_info import ao3_work_search_url, validate_ao3_search_url, save_url_params, get_page_number
 #import fandom_scrape
-from utils import VerifyPositiveIntAction
+from utils import VerifyPositiveIntAction, eprint
 from urllib.parse import parse_qs
 from colors import color
 import os
@@ -379,19 +379,34 @@ def search_start(contents, works, page):
 
 
 
-def scrape_search_pages(content, params_dict, batch_name, max_works, restart_from_file=None, url_list=[]):
+def scrape_search_pages(content, params_dict, batch_name, max_works, restart_from_file=None, url_list=[],
+                        end_page=-1):
   works = []
   using_from_file = len(url_list) > 0
+  using_max_works = max_works > 0
+  using_end_page = end_page > 0
   num_urls = -1 if not using_from_file else (len(url_list) + 1)
   # make sure that params_dict is inside of works
   # so it's a part of the data that gets written
   works.append(params_dict)
   page = params_dict["page"]
+  if using_end_page and page > end_page:
+    # Problematic since we're already starting off past what we meant to
+    eprint("Error: cannot use an end_page {} that is smaller than the starting page number {}".format(end_page, page))
+    eprint("       Please check that the commandline arguments you entered were correct.")
+    return
   num_results = find_num_results(BeautifulSoup(content))
   if num_results > 100000:
     # AO3 only displays 100,000 results, max
     print(color("Warning: this search has {} results, but only the first 100,000 can be scraped. Conisder narrowing your search if you want to scrape all of them.".format(num_results), fg="red"))
   next_url, problem = search_start(content, works, page)
+  # I just added this if statement on Friday, Aug 21 2020
+  # why was this not here earlier goddddd
+  if using_from_file:
+    if len(url_list) > 0:
+      next_url = url_list.pop(0)
+      pass
+    pass
   counter = 1
   dumps = 0
   num_works = 0
@@ -400,8 +415,21 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
 
   def not_done_yet():
     return max_works <= 0 or get_num_collected() < max_works
+
+  if using_end_page and page >= end_page:
+    # Stopping before we enter the loop
+    # Honestly I don't know why you would have it do exactly one page but I'm not going to judge
+    next_url = None
+    pass
   
-  page += 1
+  if using_from_file:
+    if next_url != None:
+      page = get_page_number(next_url)
+      pass
+    pass
+  else:
+    page += 1
+    pass
   # assume the worst, lol
   failed_problematically = True
   old_next_url = ""
@@ -466,8 +494,29 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
           next_url = None
       
       counter += 1
-      page += 1
-      if max_works > 0 and get_num_collected() >= max_works:
+
+      if using_end_page and page >= end_page:
+        # STOP, we've already done the last page
+        # This also affects urls_from_file too btw
+        #print("Page: {}, End page: {}".format(page, end_page))
+        print("Page number {} is greater than or equal to end_page {}. Quitting now.".format(page, end_page))
+        next_url = None
+        pass
+      
+      # Update the page number
+      if using_from_file:
+        if next_url != None:
+          page = get_page_number(next_url)
+          pass
+        pass
+      else:
+        page += 1
+        pass
+
+      
+        
+      
+      if using_max_works and get_num_collected() >= max_works:
         # STOP
         next_url = None
         print("Went over maximum {} by {} works".format(max_works, get_num_collected() - max_works))
@@ -496,30 +545,30 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
         pass
       pass
     except requests.exceptions.ConnectionError:
-      print("Connection error occurred while accessing page: {}".format(next_url))
-      if not using_from_file:
-        print("Last page attempted: {}".format(page))
+      eprint("Connection error occurred while accessing page: {}".format(next_url))
+      #if not using_from_file:
+      eprint("Last page attempted: {}".format(page))
       pages_to_retry.append(old_next_url)
       # Make the loop condition invalid
       next_url = None
       pass
     except KeyboardInterrupt:
       print("")
-      print(color("Program interrupted.", fg="red"))
-      print("Scraped {} works".format(get_num_collected()))
-      print("Left off at page:\n{}".format(next_url))
-      if not using_from_file:
-        print("Page number last attempted: {}".format(page))
+      eprint(color("Program interrupted.", fg="red"))
+      eprint("Scraped {} works".format(get_num_collected()))
+      eprint("Left off at page:\n{}".format(next_url))
+      #if not using_from_file:
+      eprint("Page number last attempted: {}".format(page))
       # make the loop condition invalid
       next_url = None
-      print("Quitting now...")
+      eprint("Quitting now...")
       pass
     except:
-      print("Some other error occurred. Please try again.")
-      print("next_url: {}".format(next_url))
-      print("old_next_url: {}".format(old_next_url))
-      if not using_from_file:
-        print("Last page attempted: {}".format(page))
+      eprint("Some other error occurred. Please try again.")
+      eprint("next_url: {}".format(next_url))
+      eprint("old_next_url: {}".format(old_next_url))
+      #if not using_from_file:
+      eprint("Last page attempted: {}".format(page))
       pages_to_retry.append(old_next_url)
       # Make the loop condition invalid
       next_url = None
@@ -561,7 +610,7 @@ def get_argument_parser():
   # --end_page, --page_increment aren't actually being implemented at the moment
   # But they're here so that I can actually do something with them
   # soon hopefully
-  parser.add_argument("-e", "--end_page",
+  parser.add_argument("-e", "--end-page",
                       default=-1,
                       type=int,
                       action=VerifyPositiveIntAction,
@@ -799,7 +848,8 @@ if __name__ == '__main__':
                             params_dict,
                             batch_name,
                             max_works,
-                            restart_from_file=restart_from_file)
+                            restart_from_file=restart_from_file,
+                            end_page=args.end_page)
         #if len(url_list) == 0:
         #  break
         #url = url_list.pop(0)
@@ -826,4 +876,5 @@ if __name__ == '__main__':
                       batch_name,
                       max_works,
                       restart_from_file=restart_from_file,
-                      url_list=url_list)
+                      url_list=url_list,
+                      end_page=args.end_page)
