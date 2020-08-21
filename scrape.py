@@ -382,6 +382,7 @@ def search_start(contents, works, page):
 def scrape_search_pages(content, params_dict, batch_name, max_works, restart_from_file=None, url_list=[]):
   works = []
   using_from_file = len(url_list) > 0
+  num_urls = -1 if not using_from_file else (len(url_list) + 1)
   # make sure that params_dict is inside of works
   # so it's a part of the data that gets written
   works.append(params_dict)
@@ -475,11 +476,15 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
           pass
         pass
       
-      if (counter % 5) == 0 and (counter % 100) != 0:
-        print("Done with {}".format(counter))
+      if (counter % 5) == 0:
+        if not using_from_file:
+          print("Done with {}".format(counter))
+          pass
+        else:
+          print("Done with {} out of {}".format(counter, num_urls))
         pass
-      elif (counter % 100) == 0:
-        print("Done with {}".format(counter))
+      if (counter % 100) == 0:
+        #print("Done with {}".format(counter))
         with open("{}{}.json".format(batch_name, dumps), "w") as f:
           f.write(json.dumps(works, indent="  "))
           f.flush()
@@ -698,6 +703,7 @@ if __name__ == '__main__':
     # Ignore args.from_url
     using_from_url = False
     url_list = get_url_list(params_dict, args.from_url_file)
+    print("Found {} urls".format(len(url_list)))
     pass
   elif using_from_file:
     print("Error - Files passed to --from-url-file must end in .json or .txt, but found {}".format(args.from_url_file))
