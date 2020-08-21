@@ -9,6 +9,7 @@ import argparse
 from ao3_info import ao3_work_search_url, validate_ao3_search_url, save_url_params, get_page_number
 #import fandom_scrape
 from utils import VerifyPositiveIntAction, eprint
+import utils
 from urllib.parse import parse_qs
 from colors import color
 import os
@@ -701,8 +702,11 @@ def get_argument_parser():
                             "perform searches that would otherwise have more than 100,000 "\
                             "results, and scrape all the data. The only valid choice at the "\
                             "moment is to split by word counts."))
-  parser.add_argument("--ranges", nargs="*", default=[200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2600, 2800, 3200, 3600, 4000, 4400, 4800, 5400, 6000, 6600, 7400, 8000, 9000, 10000, 12000, 20000, 30000, 40000],
-                      help=("Used with --split-by. Defaults to splitting word count by a distribution that makes every query less than 10,000 results (often, much less), for F/F with the rating Teen Up And Audiences. Note that it automatically processes 0 as being the first element, and for the last number, it will do a search for >[last number] at the very end."))
+  parser.add_argument("--ranges",
+                      nargs="*",
+                      action=utils.VerifyPositiveIntListAction,
+                      default=[200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2600, 2800, 3200, 3600, 4000, 4400, 4800, 5400, 6000, 6600, 7400, 8000, 9000, 10000, 12000, 20000, 30000, 40000],
+                      help=("Used with --split-by. Defaults to splitting word count by a distribution that makes every query less than 10,000 results (often, much less), for F/F with the rating Teen Up And Audiences. Takes a list of positive integers. Note that it automatically processes 0 as being the first element, and for the last number, it will do a search for >[last number] at the very end. Additionally, if the values aren't sorted, it will do that for you anyway: from smallest to largest."))
   parser.add_argument("--range-excludes-zero", action="store_true",
                       help=("Used with --ranges. If you enter --ranges n1 n2 n3 n4 n5, it would usually make ranges 0-n1, (n1+1)-n2, (n2+1)-n3, (n3+1)-n4, (n4+1)-n5, and >n5. But with the --range-excludes-zero option, it makes ranges (n1+1)-n2 and onward. Useful for restarting a query for splits."))
   return parser

@@ -29,3 +29,30 @@ class VerifyPositiveIntAction(argparse.Action):
       raise ValueError("value {} invalid, expected an int, but found {}".format(values, type(values)))
 
 
+class VerifyPositiveIntListAction(argparse.Action):
+  def __init__(self, option_strings, dest, nargs="*", default=[], **kwargs):
+    if nargs is None:
+      raise ValueError("nargs should be * for arguments using VerifyPositiveIntListAction actions")
+    super(VerifyPositiveIntListAction, self).__init__(option_strings, dest, nargs=nargs, default=default, **kwargs)
+    pass
+  def __call__(self, parser, namespace, values, option_string=None):
+    if isinstance(values, list):
+      if any(not isinstance(v, str) and not isinstance(v, int) for v in values):
+        raise ValueError("some of the values are invalid, expected positive integers but found: {}".format(values))
+      else:
+        try:
+          values = [int(v) for v in values]
+          pass
+        except ValueError as e:
+          raise ValueError("Expected a list of positive integers, but found: {}".format(values))
+        else:
+          if any(v <= 0 for v in values):
+            raise ValueError("Expected a list of positive integers, but found zeros and/or negative integers: {}".format(values))
+          setattr(namespace, self.dest, sorted(values))
+          pass
+        pass
+      pass
+    else:
+      raise ValueError("Expected a list, but found {}".format(values))
+    pass
+  pass
