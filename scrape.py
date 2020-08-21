@@ -823,7 +823,9 @@ if __name__ == '__main__':
         word_count_queries.append("0-{}".format(args.ranges[0]))
         pass
       for i in range(1, len(args.ranges)):
-        word_count_queries.append("{}-{}".format(args.ranges[i-1]+1, args.ranges[i]))
+        i1 = int(args.ranges[i-1]) + 1
+        i2 = int(args.ranges[i])
+        word_count_queries.append("{}-{}".format(i1, i2))
         pass
       word_count_queries.append(">{}".format(args.ranges[len(args.ranges)-1]))
       url_list = [ao3_work_search_url(category_ids=args.category,
