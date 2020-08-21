@@ -203,9 +203,11 @@ def get_next_url(soup, page, max_page, num_results):
       last_50 = max(51, len(mystr)-50)
       return mystr[:50] + "\n<!-- Omitting lots and lots of HTML and other output... -->\n" + mystr[last_50:]
     return mystr
-  if num_results <= 20:
+  if num_results <= 20 and num_results > -1:
     # It is not a problem that there is no next
     return (None, False)
+  elif num_results == -1:
+    return (None, True)
   
   find = find_of_classes(soup, "li", "next")
   if find is not None:
@@ -449,7 +451,8 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
           next_url = ao3_work_search_url(category_ids=params_dict["category"],
                                          rating_ids=params_dict["rating"],
                                          archive_warning_ids=params_dict["warning"],
-                                         page=page + 1) if not using_from_file else url_list.pop(0)
+                                         page=page + 1,
+                                         word_count=params_dict["query"]) if not using_from_file else url_list.pop(0)
           pass
         pass
       elif using_from_file:
@@ -602,6 +605,13 @@ def get_argument_parser():
                             "search parameters set using commandline options --rating, "\
                             "--warning, etc. will be ignored. But additionally, --from-url "\
                             "will also be ignored."))
+  parser.add_argument("--split-by-word-count", action="store_true",
+                      help=("Uses a chosen parameter to split the search over. This helps to "\
+                            "perform searches that would otherwise have more than 100,000 "\
+                            "results, and scrape all the data. The only valid choice at the "\
+                            "moment is to split by word counts."))
+  parser.add_argument("--ranges", nargs="*", default=[200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2600, 2800, 3200, 3600, 4000, 4400, 4800, 5400, 6000, 6600, 7400, 8000, 9000, 10000, 12000, 20000, 30000, 40000],
+                      help=("Used with --split-by. Defaults to splitting word count by a distribution that makes every query less than 10,000 results (often, much less), for F/F with the rating Teen Up And Audiences. Note that it automatically processes 0 as being the first element, and for the last number, it will do a search for >[last number] at the very end."))
   return parser
 
 def get_timestamp():
@@ -676,7 +686,9 @@ if __name__ == '__main__':
     "split_by": args.split_by,
     "test_run": args.test_run,
     "from_url": args.from_url,
-    "from_url_file": args.from_url_file
+    "from_url_file": args.from_url_file,
+    "split_by_word_count": args.split_by_word_count,
+    "ranges": args.ranges
   }
 
   using_from_url = len(args.from_url) > 0
@@ -700,14 +712,31 @@ if __name__ == '__main__':
     print("Exiting now.")
     sys.exit()
     pass
-
+  word_count_queries = []
   if using_from_file:
     params_dict["urls_from_file"] = url_list
+  url = ""
+  if not args.split_by_word_count:
+    url = ao3_work_search_url(category_ids=args.category,
+                              rating_ids=args.rating,
+                              archive_warning_ids=args.warning,
+                              page=int(args.page)) if not using_from_url and not using_from_file else (args.from_url if using_from_url else url_list.pop(0))
+  else:
+    #word_count_queries = []
+    if len(args.ranges) > 0:
+      word_count_queries.append("0-{}".format(args.ranges[0]))
+      for i in range(1, len(args.ranges)):
+        word_count_queries.append("{}-{}".format(args.ranges[i-1]+1, args.ranges[i]))
+        pass
+      word_count_queries.append(">{}".format(args.ranges[len(args.ranges)-1]))
+      url_list = [ao3_work_search_url(category_ids=args.category,
+                                      rating_ids=args.rating,
+                                      archive_warning_ids=args.warning,
+                                      word_count=w) for w in word_count_queries]
+      #url = url_list.pop(0)
+      pass
+    pass
   
-  url = ao3_work_search_url(category_ids=args.category,
-                            rating_ids=args.rating,
-                            archive_warning_ids=args.warning,
-                            page=int(args.page)) if not using_from_url and not using_from_file else (args.from_url if using_from_url else url_list.pop(0))
   
   # Save params url into params dict for good ole replicability purposes
   if not using_from_file:
@@ -732,16 +761,60 @@ if __name__ == '__main__':
     print(params_dict)
     pass
   #content = ""
-  
   headers = {'user-agent' : ''}
+  max_works = args.max_works
+  max_works = 100 if args.test_run and max_works < 0 else max_works
+  if args.split_by_word_count:
+    counter = 0
+    word_count_queries = [query.replace(">", "gt").replace("<", "lt") for query in word_count_queries]
+    while len(url_list) > 0:
+      url = url_list.pop(0)
+      print("Fetching {}".format(url))
+      try:
+        time.sleep(5)
+        res = requests.get(url, headers=headers)
+      except requests.exceptions.ConnectionError as e:
+        print("Got an connection error {}".format(e))
+        print("Going on now...")
+        pass
+      except requests.exceptions.RequestException as e:
+        print("Got a request exception {}".format(e))
+        print("Going on now...")
+        pass
+      else:
+        fetch_time = get_timestamp()
+        batch_name = ("batch_" if not args.test_run else "test_") + word_count_queries[counter] + "_" + fetch_time
+        restart_from_file = "restart_" + batch_name + ".txt"
+        params_dict["fetch_time"] = fetch_time
+        params_dict["url"] = url
+        params_dict["query"] = word_count_queries[counter].replace("gt", ">").replace("lt", "<")
+        content = res.text
+        scrape_search_pages(content,
+                            params_dict,
+                            batch_name,
+                            max_works,
+                            restart_from_file=restart_from_file)
+        #if len(url_list) == 0:
+        #  break
+        #url = url_list.pop(0)
+        counter += 1
+        pass
+      pass
+    print("Done with {} split batches. Exiting...".format(len(word_count_queries)))
+    sys.exit()
+    pass
+  
+        
+        
+        
+  #headers = {'user-agent' : ''}
   res = requests.get(url, headers=headers)
   fetch_time = get_timestamp()
   batch_name = "batch_" + fetch_time if not args.test_run else "test_" + fetch_time
   restart_from_file = "restart_" + batch_name + ".txt"
   params_dict["fetch_time"] = fetch_time
   content = res.text
-  max_works = args.max_works
-  max_works = 100 if args.test_run and max_works < 0 else max_works
+  
   scrape_search_pages(content,
                       params_dict,
                       batch_name,
