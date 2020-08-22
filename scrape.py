@@ -826,6 +826,11 @@ if __name__ == '__main__':
     "range_from_file": args.range_from_file
   }
 
+  # Needs this just in case, because I realized scrape_search_pages was accessing
+  # this without even checking to see if it was in there
+  # I'm honestly surprised this hasn't come up as an issue before.
+  params_dict["query"] = ""
+
   if args.range_from_file is not None and not args.split_by_word_count:
     eprint("Error: used --range-from-file without specifying --split-by-word-count.")
     eprint("Exiting.")
