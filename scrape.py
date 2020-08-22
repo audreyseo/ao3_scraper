@@ -711,6 +711,7 @@ def get_argument_parser():
                             "run, set using -m/--max_works."))
   parser.add_argument("-u", "--from-url",
                       default="",
+                      metavar="URL",
                       help=("Use a given url to start a search. This effectively "\
                             "ignores the commandline options --rating, "\
                             "--warning, --category, and --page. However --max_works/-m "\
@@ -720,6 +721,7 @@ def get_argument_parser():
                             "these command line optinos will be saved there."))
   parser.add_argument("--from-url-file",
                       default="",
+                      metavar="URL_FILE",
                       help=("Takes files either ending with .json or .txt. If ending in "\
                             ".json, the program expects that the object contained will "\
                             "have entries named \"params_dict\" and \"urls\", containing "\
@@ -737,6 +739,7 @@ def get_argument_parser():
                             "moment is to split by word counts."))
   parser.add_argument("--ranges",
                       nargs="*",
+                      metavar=("N1", "N2"),
                       action=utils.VerifyPositiveIntListAction,
                       default=[200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2600, 2800, 3200, 3600, 4000, 4400, 4800, 5400, 6000, 6600, 7400, 8000, 9000, 10000, 12000, 20000, 30000, 40000],
                       help=("Used with --split-by. Defaults to splitting word count by a distribution that makes every query less than 10,000 results (often, much less), for F/F with the rating Teen Up And Audiences. Takes a list of positive integers. Note that it automatically processes 0 as being the first element, and for the last number, it will do a search for >[last number] at the very end. Additionally, if the values aren't sorted, it will do that for you anyway: from smallest to largest."))
@@ -744,7 +747,28 @@ def get_argument_parser():
                       help=("Used with --ranges. If you enter --ranges n1 n2 n3 n4 n5, it would usually make ranges 0-n1, (n1+1)-n2, (n2+1)-n3, (n3+1)-n4, (n4+1)-n5, and >n5. But with the --range-excludes-zero option, it makes ranges (n1+1)-n2 and onward. Useful for restarting a query for splits."))
   parser.add_argument("--range-from-file",
                       default=None,
+                      metavar="RANGE_FILE",
                       help=("Used instead of the --ranges argument. Takes in a file containing numbers separated by newlines, and then that basically becomes the contents of the --ranges argument, essentially."))
+  parser.add_argument("--slice-range",
+                      default=None,
+                      nargs=2,
+                      metavar=("BEGIN", "END"),
+                      help=("Takes a slice of the range inclusive of begin and end. This means different "\
+                            "things depending on the value of the --slice-range-by option."))
+  parser.add_argument("--slice-range-by",
+                      default="actual",
+                      #metavar="KIND",
+                      choices=["actual", "value_by_index", "value_by_value"],
+                      help=("--slice-range-by KIND Determines how to slice the range depending on the value of KIND. "\
+                            "KIND must be of one of %(choices)s. "\
+                            "By default, KIND = \"actual\", which means that it takes an index-based "\
+                            "slice of the list of ranges, i.e. [\"0-200\", \"201-400\", ...] instead "\
+                            "of the range limiting values. If KIND = \"value_by_index\", it takes "\
+                            "a slice of the array that generates the list of ranges, e.g. [200, 400, ...] "\
+                            "Finally, if KIND = \"value_by_value\", then it slices the array generating "\
+                            "the list of ranges by taking only the values that are within BEGIN and END, "\
+                            "specified by --slice-range BEGIN END.\n"\
+                            "Compatible with --range-from-file as well."))
   return parser
 
 def get_timestamp():
@@ -823,7 +847,9 @@ if __name__ == '__main__':
     "split_by_word_count": args.split_by_word_count,
     "ranges": args.ranges,
     "range_excludes_zero": args.range_excludes_zero,
-    "range_from_file": args.range_from_file
+    "range_from_file": args.range_from_file,
+    "slice_range": args.slice_range,
+    "slice_range_by": args.slice_range_by
   }
 
   # Needs this just in case, because I realized scrape_search_pages was accessing
@@ -885,6 +911,7 @@ if __name__ == '__main__':
           pass
         else:
           ranges = sorted(ranges)
+              
           if any(r <= 0 for r in ranges):
             eprint("Expected only positive integers for a range, but found zeros/negatives: {}".format(ranges))
             eprint("Exiting. Please try again.")
@@ -894,6 +921,22 @@ if __name__ == '__main__':
           params_dict["ranges"] = ranges
           pass
     if len(ranges) > 0:
+      if args.slice_range is not None and args.slice_range_by in ["value_by_value", "value_by_index"]:
+        slices = [int(s) for s in args.slice_range]
+        lo = slices[0]
+        hi = slices[1]
+        if args.slice_range_by == "value_by_index":
+          if hi < len(ranges) and lo >= 0:
+            ranges = ranges[lo:(hi + 1)]
+          else:
+            eprint("Improper indices {} and {} on ranges {}".format(lo, hi, ranges))
+            eprint("Exiting. Please try again.")
+            sys.exit()
+            pass
+          pass
+        else:
+          ranges = [r for r in ranges if r >= lo and r <= hi]
+      
       if not args.range_excludes_zero:
         word_count_queries.append("0-{}".format(ranges[0]))
         pass
@@ -903,6 +946,19 @@ if __name__ == '__main__':
         word_count_queries.append("{}-{}".format(i1, i2))
         pass
       word_count_queries.append(">{}".format(ranges[len(ranges)-1]))
+      if args.slice_range_by == "actual":
+        slices = [int(s) for s in args.slice_range]
+        lo = slices[0]
+        hi = slices[1]
+        if hi < len(word_count_queries) and lo >= 0 and lo <= hi:
+          word_count_queries = word_count_queries[lo:(hi + 1)]
+        else:
+          eprint("Improper indices given to --slice-range: {}, {}".format(lo, hi))
+          eprint("Exiting. Please try again.")
+          sys.exit()
+          pass
+        pass
+      
       url_list = [ao3_work_search_url(category_ids=args.category,
                                       rating_ids=args.rating,
                                       archive_warning_ids=args.warning,
