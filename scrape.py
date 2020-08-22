@@ -415,6 +415,9 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
 
   max_page_number = find_max_page(content)
   num_results = find_num_results(BeautifulSoup(content, "html.parser"))
+  pages_to_retry = []
+  failed_problematically = False
+  attempts_left = -1
   if num_results > 100000:
     # AO3 only displays 100,000 results, max
     print(color("Warning: this search has {} results, but only the first 100,000 can be scraped. Conisder narrowing your search if you want to scrape all of them.".format(num_results), fg="red"))
@@ -426,6 +429,22 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
       next_url = url_list.pop(0)
       pass
     pass
+  elif problem or num_results < 0:
+    # Bad times
+    if next_url is None:
+      eprint("Error: Problem with finding next_url: Is Problem: {}, Num Results: {}".format(problem, num_results))
+      eprint("Attempting to just try the next page number, {}".format(page + 1))
+      eprint("If the next 75 consecutive attempts fail, then this search will terminate.")
+      eprint("Stop it at any time by using CTRL-C")
+      failed_problematically = True
+      attempts_left = 75
+      next_url = ao3_work_search_url(category_ids=params_dict["category"],
+                                     rating_ids=params_dict["rating"],
+                                     archive_warning_ids=params_dict["warning"],
+                                     page=page + 1,
+                                     word_count=params_dict["query"])
+      # Add the current URL to the list of URLs to retry next time
+      pages_to_retry.append(params_dict["url"])
   counter = 1
   dumps = 0
   num_works = 0
@@ -457,7 +476,6 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
       next_url = None
     pass
   # assume the worst, lol
-  failed_problematically = True
   old_next_url = ""
 
   def write_to_restart_from_file(url_to_write):
@@ -480,7 +498,7 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
       print("No urls to restart")
     pass
 
-  pages_to_retry = []
+  
   
   while next_url is not None and not_done_yet():
 
@@ -497,7 +515,22 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
       content = res1.text
       old_next_url = next_url
       next_url, isProblem = search_start(content, works, page)
-      if next_url is None and (not using_from_file or isProblem):
+
+      failing_out = False
+      if failed_problematically and next_url is None and isProblem:
+        attempts_left -= 1
+        if attempts_left <= 0:
+          # Prevent it from trying to assign a next_url.
+          failing_out = True
+          pass
+        pass
+      elif next_url is not None and failed_problematically:
+        # Don't need to worry anymore
+        failed_problematically = False
+        attempts_left = -1
+        pass
+      
+      if next_url is None and (not using_from_file or isProblem) and not failing_out:
         print("Last page!: {}".format(old_next_url))
         if isProblem:
           print("Left off trying to get page number {}".format(page))
