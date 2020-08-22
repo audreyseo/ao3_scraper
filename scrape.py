@@ -902,7 +902,7 @@ if __name__ == '__main__':
   max_works = 100 if args.test_run and max_works < 0 else max_works
   if args.split_by_word_count:
     counter = 0
-    word_count_queries = [query.replace(">", "gt").replace("<", "lt") for query in word_count_queries]
+    word_count_file_names = [query.replace(">", "gt").replace("<", "lt") for query in word_count_queries]
     while len(url_list) > 0:
       url = url_list.pop(0)
       print("Fetching {}".format(url))
@@ -919,11 +919,11 @@ if __name__ == '__main__':
         pass
       else:
         fetch_time = get_timestamp()
-        batch_name = ("batch_" if not args.test_run else "test_") + word_count_queries[counter] + "_" + fetch_time
+        batch_name = ("batch_" if not args.test_run else "test_") + word_count_file_names[counter] + "_" + fetch_time
         restart_from_file = "restart_" + batch_name + ".txt"
         params_dict["fetch_time"] = fetch_time
         params_dict["url"] = url
-        params_dict["query"] = word_count_queries[counter].replace("gt", ">").replace("lt", "<")
+        params_dict["query"] = word_count_queries[counter]
         content = res.text
         scrape_search_pages(content,
                             params_dict,
