@@ -709,6 +709,9 @@ def get_argument_parser():
                       help=("Used with --split-by. Defaults to splitting word count by a distribution that makes every query less than 10,000 results (often, much less), for F/F with the rating Teen Up And Audiences. Takes a list of positive integers. Note that it automatically processes 0 as being the first element, and for the last number, it will do a search for >[last number] at the very end. Additionally, if the values aren't sorted, it will do that for you anyway: from smallest to largest."))
   parser.add_argument("--range-excludes-zero", action="store_true",
                       help=("Used with --ranges. If you enter --ranges n1 n2 n3 n4 n5, it would usually make ranges 0-n1, (n1+1)-n2, (n2+1)-n3, (n3+1)-n4, (n4+1)-n5, and >n5. But with the --range-excludes-zero option, it makes ranges (n1+1)-n2 and onward. Useful for restarting a query for splits."))
+  parser.add_argument("--range-from-file",
+                      default=None,
+                      help=("Used instead of the --ranges argument. Takes in a file containing numbers separated by newlines, and then that basically becomes the contents of the --ranges argument, essentially."))
   return parser
 
 def get_timestamp():
@@ -786,8 +789,15 @@ if __name__ == '__main__':
     "from_url_file": args.from_url_file,
     "split_by_word_count": args.split_by_word_count,
     "ranges": args.ranges,
-    "range_excludes_zero": args.range_excludes_zero
+    "range_excludes_zero": args.range_excludes_zero,
+    "range_from_file": args.range_from_file
   }
+
+  if args.range_from_file is not None and not args.split_by_word_count:
+    eprint("Error: used --range-from-file without specifying --split-by-word-count.")
+    eprint("Exiting.")
+    sys.exit()
+    pass
 
   using_from_url = len(args.from_url) > 0
   using_from_file = len(args.from_url_file) > 0
@@ -803,7 +813,6 @@ if __name__ == '__main__':
     sys.exit()
     pass
   
-        
 
   if using_from_url and not validate_ao3_search_url(args.from_url):
     print(("The url \"{}\" is not a valid AO3 search url. "\
@@ -822,16 +831,40 @@ if __name__ == '__main__':
                               page=int(args.page)) if not using_from_url and not using_from_file else (args.from_url if using_from_url else url_list.pop(0))
   else:
     #word_count_queries = []
-    if len(args.ranges) > 0:
+    ranges = args.ranges
+    if args.range_from_file is not None:
+      if os.path.exists(args.range_from_file):
+        with open(args.range_from_file, "r") as f:
+          ranges = (f.read()).split("\n")
+          pass
+        try:
+          ranges = [int(r) for r in ranges if len(r) > 0]
+          pass
+        except ValueError:
+          eprint("Expected the file {} to contain positive integers, but found {}".format(args.range_from_file, ranges))
+          eprint("Exiting. Please check the file again.")
+          sys.exit()
+          pass
+        else:
+          ranges = sorted(ranges)
+          if any(r <= 0 for r in ranges):
+            eprint("Expected only positive integers for a range, but found zeros/negatives: {}".format(ranges))
+            eprint("Exiting. Please try again.")
+            sys.exit()
+            pass
+          # Replace the ranges attribute
+          params_dict["ranges"] = ranges
+          pass
+    if len(ranges) > 0:
       if not args.range_excludes_zero:
-        word_count_queries.append("0-{}".format(args.ranges[0]))
+        word_count_queries.append("0-{}".format(ranges[0]))
         pass
-      for i in range(1, len(args.ranges)):
-        i1 = int(args.ranges[i-1]) + 1
-        i2 = int(args.ranges[i])
+      for i in range(1, len(ranges)):
+        i1 = int(ranges[i-1]) + 1
+        i2 = int(ranges[i])
         word_count_queries.append("{}-{}".format(i1, i2))
         pass
-      word_count_queries.append(">{}".format(args.ranges[len(args.ranges)-1]))
+      word_count_queries.append(">{}".format(ranges[len(ranges)-1]))
       url_list = [ao3_work_search_url(category_ids=args.category,
                                       rating_ids=args.rating,
                                       archive_warning_ids=args.warning,
