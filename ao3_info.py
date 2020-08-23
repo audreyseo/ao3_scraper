@@ -4,6 +4,8 @@ from urllib.parse import parse_qs, quote_plus
 #from fandom_scrape import fandom_names_json_name
 import json
 #from functools import reduce
+import html
+
 
 search_keys = [
   "query",
@@ -80,6 +82,10 @@ def validate_ao3_search_url(url):
   def validate_work_stats(entry):
     if len(entry) == 0:
       return True
+    new_entry = html.unescape(entry)
+    if new_entry != entry:
+      #print("old entry: {}, new entry: {}".format(entry, new_entry))
+      entry = new_entry
     stats_validator = re.compile(r"\s*[><]?\s*\d+\s*(?:-\s*\d+\s*)?")
     if stats_validator.match(entry):
       return re.match(r"^\s*[><]\s*\d+\s*$", entry) or re.match(r"^\s*\d+\s*-\s*\d+\s*$", entry) or re.match(r"^\s*\d+\s*$", entry)
@@ -475,3 +481,5 @@ if __name__ == "__main__":
 
   validate_ao3_search_url("https://archiveofourown.org/works/search?utf8=✓&work_search%5Bquery%5D=&work_search%5Btitle%5D=&work_search%5Bcreators%5D=&work_search%5Brevised_at%5D=&work_search%5Bcomplete%5D=T&work_search%5Bcrossover%5D=&work_search%5Bsingle_chapter%5D=0&work_search%5Bsingle_chapter%5D=1&work_search%5Bword_count%5D=&work_search%5Blanguage_id%5D=&work_search%5Bfandom_names%5D=Naruto%2CBleach&work_search%5Brating_ids%5D=&work_search%5Bcategory_ids%5D%5B%5D=116&work_search%5Bcharacter_names%5D=&work_search%5Brelationship_names%5D=&work_search%5Bfreeform_names%5D=&work_search%5Bhits%5D=&work_search%5Bkudos_count%5D=&work_search%5Bcomments_count%5D=&work_search%5Bbookmarks_count%5D=&work_search%5Bsort_column%5D=_score&work_search%5Bsort_direction%5D=desc&commit=Search")
   save_url_params({"rating": "", "warning": [], "category": [], "page": 1}, ao3_work_search_url(page=2, archive_warning_ids=["MCD", "CNTUAW"]))
+
+  print(validate_ao3_search_url("https://archiveofourown.org/works/search?commit=Search&page=46&utf8=✓&work_search%5Bbookmarks_count%5D=&work_search%5Bcategory_ids%5D%5B%5D=23&work_search%5Bcharacter_names%5D=&work_search%5Bcomments_count%5D=&work_search%5Bcomplete%5D=&work_search%5Bcreators%5D=&work_search%5Bfandom_names%5D=&work_search%5Bfreeform_names%5D=&work_search%5Bhits%5D=&work_search%5Bkudos_count%5D=&work_search%5Blanguage_id%5D=&work_search%5Bquery%5D=&work_search%5Brating_ids%5D=9&work_search%5Brelationship_names%5D=&work_search%5Brevised_at%5D=&work_search%5Bsingle_chapter%5D=0&work_search%5Bsort_column%5D=created_at&work_search%5Bsort_direction%5D=asc&work_search%5Btitle%5D=&work_search%5Bword_count%5D=%26gt%3B47000"))
