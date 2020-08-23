@@ -652,7 +652,7 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
     f.flush()
     pass
   write_to_restart_from_file(pages_to_retry)
-  print("Num works: {}".format(num_works))
+  print(color("Num works: {}".format(num_works), fg="blue"))
   pass
 
 def get_argument_parser():
