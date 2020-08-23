@@ -152,7 +152,8 @@ def get_tag_info(listing):
 
 def get_tags(work_tag):
   find = find_of_classes(work_tag, "ul", "tags", "commas")
-  
+  if find is None:
+    return ([], [], [])
   relationships = find_all_of_classes(find, "li", "relationships")
   characters = find_all_of_classes(find, "li", "characters")
   tags = find_all_of_classes(find, "li", "freeforms")
