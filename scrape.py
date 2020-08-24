@@ -14,18 +14,19 @@ from urllib.parse import parse_qs
 from colors import color
 import os
 import re
+import scrape_utils as sutils
 
 ao3_home = "https://archiveofourown.org"
 
-def is_work(tag):
-  #print(tag.prettify())
-  return 'class' in tag.attrs and 'work' in tag['class'] and 'blurb' in tag['class'] and 'group' in tag['class']
 
+# now in sutils
 def has_class(tag):
   return 'class' in tag.attrs
 
+# now in sutils
 def has_href(tag):
   return 'href' in tag.attrs
+
 
 def get_title_and_author(work_tag):
   def find_by_index(contents):
@@ -35,7 +36,7 @@ def get_title_and_author(work_tag):
       pass
     return -1
   found = work_tag.find_all("h4")
-  found = [f for f in found if has_class(f) and "heading" in f['class']]
+  found = [f for f in found if sutils.has_class(f) and "heading" in f['class']]
   #print("get_title_and_author: found:\n{}".format(found))
   if len(found) == 1:
     parts = found[0].find_all("a")
@@ -44,13 +45,13 @@ def get_title_and_author(work_tag):
       return (None, None, None, None)
     # So we know that there's at least 1
     title_tag = parts[0]
-    title_href = title_tag["href"] if has_href(title_tag) else None
+    title_href = title_tag["href"] if sutils.has_href(title_tag) else None
     title = str(title_tag.string)
     author = None
     author_href = None
     if len(parts) >= 2:
       author_tag = parts[1]
-      author_href = author_tag["href"] if has_href(author_tag) else None
+      author_href = author_tag["href"] if sutils.has_href(author_tag) else None
       author = str(author_tag.string)
       pass
     elif len(parts) == 1:
@@ -75,8 +76,9 @@ def get_title_and_author(work_tag):
       
   return (None, None, None, None)
 
+# Now in sutils
 def has_all_classes(tag, *classes):
-  if not has_class(tag):
+  if not sutils.has_class(tag):
     return False
   for c in classes:
     if c not in tag['class']:
@@ -85,37 +87,41 @@ def has_all_classes(tag, *classes):
 
 def get_fandoms(work_tag):
   finds = work_tag.find_all("h5")
-  finds = [f for f in finds if has_class(f) and has_all_classes(f, "heading", "fandoms")]
+  finds = [f for f in finds if sutils.has_class(f) and sutils.has_all_classes(f, "heading", "fandoms")]
   #print(finds)
   if len(finds) == 1:
     fandoms = []
     fandom_tags = finds[0].find_all("a")
     for ft in fandom_tags:
       fandom = str(ft.string)
-      fandom_url = (ao3_home + ft['href']) if has_href(ft) else ""
+      fandom_url = (ao3_home + ft['href']) if sutils.has_href(ft) else ""
       fandoms.append([fandom, fandom_url])
     return fandoms
   return []
 
+# now in sutils
 def find_all_of_classes(work_tag, name, *classes):
   finds = work_tag.find_all(name)
-  finds = [f for f in finds if has_all_classes(f, *classes)]
+  finds = [f for f in finds if sutils.has_all_classes(f, *classes)]
   return finds
 
+# now in sutils
 def find_of_classes(work_tag, name, *classes):
   finds = work_tag.find_all(name)
-  finds = [f for f in finds if has_all_classes(f, *classes)]
+  finds = [f for f in finds if sutils.has_all_classes(f, *classes)]
   if len(finds) >= 1:
     if len(finds) > 1:
       print("multiple finds of {} of classes {} in {}".format(name, classes, work_tag))
     return finds[0]
   #print("0 finds of {} of classes {} in {}".format(name, classes, work_tag))
   return None
+
 def find_completeness(tag):
   find = find_of_classes(tag, "span", "iswip")
   if find is not None:
     return find
 
+# now in sutils
 def has_title(tag):
   return "title" in tag.attrs
   
@@ -128,10 +134,10 @@ def get_required(work_tag):
     warnings_tag = find_of_classes(found, "span", "warnings")
     categories_tag = find_of_classes(found, "span", "category")
     complete_tag = find_completeness(found)
-    rating = ratings_tag['title'] if ratings_tag is not None and has_title(ratings_tag) else "FAILURE"
-    warnings = warnings_tag['title'].split(", ") if has_title(warnings_tag) else ["FAILURE"]
-    categories = categories_tag['title'].split(", ") if has_title(categories_tag) else ["FAILURE"]
-    complete = complete_tag['title'] != "Work in Progress" if complete_tag is not None and has_title(complete_tag) else "FAILURE"
+    rating = ratings_tag['title'] if ratings_tag is not None and sutils.has_title(ratings_tag) else "FAILURE"
+    warnings = warnings_tag['title'].split(", ") if sutils.has_title(warnings_tag) else ["FAILURE"]
+    categories = categories_tag['title'].split(", ") if sutils.has_title(categories_tag) else ["FAILURE"]
+    complete = complete_tag['title'] != "Work in Progress" if complete_tag is not None and sutils.has_title(complete_tag) else "FAILURE"
     return (rating, warnings, categories, complete)
   return ("", [], [], False)
 
@@ -140,12 +146,12 @@ def get_last_updated(work_tag):
   if find is not None:
     return str(find.string)
   return ""
-
+# now in sutils
 def get_tag_info(listing):
   link = find_of_classes(listing, "a", "tag")
   if link is None:
     return ["", ""]
-  url = (ao3_home + link["href"]) if has_href(link) else ""
+  url = (ao3_home + link["href"]) if sutils.has_href(link) else ""
   name = str(link.string)
   #print("tag_info: {}, {}".format(name, url))
   return [name, url]
@@ -157,9 +163,9 @@ def get_tags(work_tag):
   relationships = find_all_of_classes(find, "li", "relationships")
   characters = find_all_of_classes(find, "li", "characters")
   tags = find_all_of_classes(find, "li", "freeforms")
-  relationships = [get_tag_info(r) for r in relationships]
-  characters = [get_tag_info(c) for c in characters]
-  tags = [get_tag_info(t) for t in tags]
+  relationships = [sutils.get_tag_info(r) for r in relationships]
+  characters = [sutils.get_tag_info(c) for c in characters]
+  tags = [sutils.get_tag_info(t) for t in tags]
   return (relationships, characters, tags)
 
 
@@ -169,9 +175,12 @@ def get_summary(work_tag):
     return "".join(list(map(lambda x: str(x), find.contents)))
   return ""
 
+# now in sutils
 def get_string(t):
   if t is not None:
-    return str(t.string)
+    if t.string is not None:
+      return str(t.string)
+    pass
   return ""
 
 
@@ -182,23 +191,47 @@ def get_stats(work_tag):
     words_tag = find_of_classes(stats, "dd", "words")
     chapters_tag = find_of_classes(stats, "dd", "chapters")
     hits_tag = find_of_classes(stats, "dd", "hits")
-    lang = get_string(lang_tag)
-    words = get_string(words_tag)
-    chapters_text = get_string(chapters_tag)
-    chs_split = chapters_text.split("/")
+    lang = sutils.get_string(lang_tag)
+    words = sutils.get_string(words_tag)
+    chapters_text = sutils.get_string(chapters_tag)
     chapters = 0
     max_chapters = -1
-    if len(chs_split) == 2:
-      chapters = int(chs_split[0])
-      max_ch = chs_split[1]
-      if max_ch != "?":
-        max_chapters = int(max_ch)
-    hits = get_string(hits_tag)
+    if chapters_text == "":
+      # Gotta do something about this
+      latest_chapter_link = chapters_tag.find("a")
+      if latest_chapter_link is not None:
+        chapters_text = sutils.get_string(latest_chapter_link).strip()
+        if re.match(r"\d[0-9,]+", chapters_text):
+          chapters = int(chapters_text)
+          pass
+        pass
+      for c in chapters_tag.contents:
+        if re.match(r"/(\d+|\?)", c):
+          max_chapters_text = re.sub(r"/(\d+|\?)", r"\1", c)
+          if max_chapters_text != "?":
+            max_chapters = int(max_chapters_text)
+            pass
+          break
+        pass
+      pass
+    else:
+      chs_split = chapters_text.split("/")
+      if len(chs_split) == 2:
+        chapters = int(chs_split[0])
+        max_ch = chs_split[1]
+        if max_ch != "?":
+          max_chapters = int(max_ch)
+          pass
+        pass
+      pass
+    
+    hits = sutils.get_string(hits_tag)
     if len(hits) > 0:
       hits = int(hits)
     return (lang, words, chapters, max_chapters, hits)
   return ("FAILURE", "FAILURE", "FAILURE", "FAILURE", "FAILURE")
 
+# now in sutils
 def abbreviate_soup(soup):
   mystr = str(soup) if not isinstance(soup, str) else soup
   if len(mystr) > 100:
@@ -223,7 +256,7 @@ def get_next_url(soup, page, max_page, num_results):
     oldFind = find
     find = find.find("a")
     if find is not None:
-      if has_href(find):
+      if sutils.has_href(find):
         return (ao3_home + find['href'], False)
       pass
     else:
@@ -281,10 +314,11 @@ ao3_params_to_searchables = {
   "archive_warning_ids": "warnings"
 }
 
+# Now in sutils
 def find_num_results(soup):
   results_found = re.compile("\s*(\d+)\s+Found\s*")
   candidates = find_all_of_classes(soup, "h3", "heading")
-  candidates = [c for c in candidates if has_class(c) and len(c["class"]) == 1]
+  candidates = [c for c in candidates if sutils.has_class(c) and len(c["class"]) == 1]
   if len(candidates) == 1:
     candidate = candidates[0]
     for c in candidate.contents:
@@ -299,10 +333,11 @@ def find_num_results(soup):
   #print("strings: {}".format(candidates))
   return -1
 
+# Now in sutils
 def find_max_page(soup):
   def find_next_index(li_list):
     for i in range(len(li_list)):
-      if has_class(li_list[i]):
+      if sutils.has_class(li_list[i]):
         if "next" in li_list[i]["class"]:
           return i
         pass
@@ -315,9 +350,9 @@ def find_max_page(soup):
       # Houston, we have a problem
       # This is most likely a case of "Retry later"
       eprint("Warning: soup is weirdly empty.")
-      print("Abbreviated soup:\n{}".format(color(abbreviate_soup(soup), fg="blue")))
+      print("Abbreviated soup:\n{}".format(color(sutils.abbreviate_soup(soup), fg="blue")))
       return -1'''
-  num_results = find_num_results(soup)
+  num_results = sutils.find_num_results(soup)
   if num_results > -1 and num_results <= 20:
     return 1
   paginations = find_all_of_classes(soup, "ol", "pagination", "actions")
@@ -345,16 +380,16 @@ def search_start(contents, works, page):
      there must have been some sort of issue with parsing the page.
   '''
   soup = BeautifulSoup(contents, "html.parser")
-  max_page = find_max_page(soup)
-  num_results = find_num_results(soup)
+  max_page = sutils.find_max_page(soup)
+  num_results = sutils.find_num_results(soup)
   
   
   
-  #print("Max page: {}".format(find_max_page(soup)))
+  #print("Max page: {}".format(sutils.find_max_page(soup)))
   
   #print(soup.prettify())
   raw_works = soup.find_all("li")
-  raw_works = [t for t in raw_works if is_work(t)]
+  raw_works = [t for t in raw_works if sutils.is_work(t)]
   #print(raw_works)
   for w in raw_works:
     title, title_link, author, author_link = get_title_and_author(w)
@@ -414,8 +449,8 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
     eprint("       Please check that the commandline arguments you entered were correct.")
     return
 
-  max_page_number = find_max_page(content)
-  num_results = find_num_results(BeautifulSoup(content, "html.parser"))
+  max_page_number = sutils.find_max_page(content)
+  num_results = sutils.find_num_results(BeautifulSoup(content, "html.parser"))
   pages_to_retry = []
   failed_problematically = False
   attempts_left = -1
@@ -560,7 +595,7 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
       counter += 1
 
       if (counter % 5) == 0 or page >= max_page_number - 10:
-        new_max = find_max_page(content)
+        new_max = sutils.find_max_page(content)
         if new_max > 0 and new_max > max_page_number:
           print("Updating max page number from {} to {}...".format(max_page_number, new_max))
           max_page_number = new_max

@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 import requests
 import os
 from scrape import find_all_of_classes, ao3_home, has_href
+import scrape_utils as sutils
 import re
 import json
 import time
@@ -28,7 +29,7 @@ def get_fandom_info(tag):
     return None, None, None
   name = str(a_tag.string)
   url = ""
-  if has_href(a_tag):
+  if sutils.has_href(a_tag):
     url = ao3_home + a_tag["href"]
     pass
   countstring = ""
@@ -48,7 +49,7 @@ def get_fandom_info(tag):
 
 def scrape_fandom_names(content):
   soup = BeautifulSoup(content, features="html.parser")
-  indices = find_all_of_classes(soup, "ul", "tags", "index", "group")
+  indices = sutils.find_all_of_classes(soup, "ul", "tags", "index", "group")
   entries = []
   for i in indices:
     lis = i.find_all("li")
