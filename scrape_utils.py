@@ -1,3 +1,6 @@
+from bs4 import BeautifulSoup
+
+
 ao3_home = "https://archiveofourown.org"
 
 def is_work(tag):
