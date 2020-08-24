@@ -688,23 +688,25 @@ def get_argument_parser():
                       type=int,
                       action=VerifyPositiveIntAction,
                       help="Which page to stop at. Use -1 to go to the end")
-  parser.add_argument("-m", "--max_works",
+  parser.add_argument("-m", "--max-works",
                       default=-1,
                       type=int,
                       action=VerifyPositiveIntAction,
                       help="How many works' stats to include. -1 means all possible.")
-  parser.add_argument("--page_increment",
+  parser.add_argument("--page-increment",
                       default=1,
                       type=int,
                       help=("Collect every nth page from a search, "\
                             "defaults to 1, i.e. collecting every page from a search."))
-  parser.add_argument("--split_by",
+  # Not actually implemented
+  # Though word count should technicallly be integrated into this.
+  parser.add_argument("--split-by",
                       default="none",
                       choices=["none", "fandoms"],
                       help=("Split a search over every searchable tag. "\
                             "Currently only supports search over all "\
                             "fandoms. (This helps to make a broad search more tractable)"))
-  parser.add_argument("--test_run",
+  parser.add_argument("--test-run",
                       action="store_true",
                       help=("Run a test by only collecting the first "\
                             "100 works. Saves the resulting scraped "\

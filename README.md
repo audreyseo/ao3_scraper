@@ -83,10 +83,12 @@ you will get the following output:
 ```
 usage: scrape.py [-h] [-c [CATEGORY [CATEGORY ...]]] [-r RATING]
                  [-w [WARNING [WARNING ...]]] [-p PAGE] [-e END_PAGE]
-                 [-m MAX_WORKS] [--page_increment PAGE_INCREMENT]
-                 [--split_by {none,fandoms}] [--test_run] [-u FROM_URL]
-                 [--from-url-file FROM_URL_FILE] [--split-by-word-count]
-                 [--ranges [RANGES [RANGES ...]]] [--range-excludes-zero]
+                 [-m MAX_WORKS] [--page-increment PAGE_INCREMENT]
+                 [--split-by {none,fandoms}] [--test-run] [-u URL]
+                 [--from-url-file URL_FILE] [--split-by-word-count]
+                 [--ranges [N1 [N2 ...]]] [--range-excludes-zero]
+                 [--range-from-file RANGE_FILE] [--slice-range BEGIN END]
+                 [--slice-range-by {actual,value_by_index,value_by_value}]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -104,21 +106,21 @@ optional arguments:
   -p PAGE, --page PAGE  Which page of the search to start from
   -e END_PAGE, --end-page END_PAGE
                         Which page to stop at. Use -1 to go to the end
-  -m MAX_WORKS, --max_works MAX_WORKS
+  -m MAX_WORKS, --max-works MAX_WORKS
                         How many works' stats to include. -1 means all
                         possible.
-  --page_increment PAGE_INCREMENT
+  --page-increment PAGE_INCREMENT
                         Collect every nth page from a search, defaults to 1,
                         i.e. collecting every page from a search.
-  --split_by {none,fandoms}
+  --split-by {none,fandoms}
                         Split a search over every searchable tag. Currently
                         only supports search over all fandoms. (This helps to
                         make a broad search more tractable)
-  --test_run            Run a test by only collecting the first 100 works.
+  --test-run            Run a test by only collecting the first 100 works.
                         Saves the resulting scraped data to a file(s) named
                         test_[timestamp][number].json. To collect more or less
                         works for your test run, set using -m/--max_works.
-  -u FROM_URL, --from-url FROM_URL
+  -u URL, --from-url URL
                         Use a given url to start a search. This effectively
                         ignores the commandline options --rating, --warning,
                         --category, and --page. However --max_works/-m should
@@ -127,7 +129,7 @@ optional arguments:
                         beginning of every batch file. Only parameters that
                         can be altered via these command line optinos will be
                         saved there.
-  --from-url-file FROM_URL_FILE
+  --from-url-file URL_FILE
                         Takes files either ending with .json or .txt. If
                         ending in .json, the program expects that the object
                         contained will have entries named "params_dict" and
@@ -145,7 +147,7 @@ optional arguments:
                         more than 100,000 results, and scrape all the data.
                         The only valid choice at the moment is to split by
                         word counts.
-  --ranges [RANGES [RANGES ...]]
+  --ranges [N1 [N2 ...]]
                         Used with --split-by. Defaults to splitting word count
                         by a distribution that makes every query less than
                         10,000 results (often, much less), for F/F with the
@@ -162,6 +164,29 @@ optional arguments:
                         --range-excludes-zero option, it makes ranges
                         (n1+1)-n2 and onward. Useful for restarting a query
                         for splits.
+  --range-from-file RANGE_FILE
+                        Used instead of the --ranges argument. Takes in a file
+                        containing numbers separated by newlines, and then
+                        that basically becomes the contents of the --ranges
+                        argument, essentially.
+  --slice-range BEGIN END
+                        Takes a slice of the range inclusive of begin and end.
+                        This means different things depending on the value of
+                        the --slice-range-by option.
+  --slice-range-by {actual,value_by_index,value_by_value}
+                        --slice-range-by KIND Determines how to slice the
+                        range depending on the value of KIND. KIND must be of
+                        one of actual, value_by_index, value_by_value. By
+                        default, KIND = "actual", which means that it takes an
+                        index-based slice of the list of ranges, i.e.
+                        ["0-200", "201-400", ...] instead of the range
+                        limiting values. If KIND = "value_by_index", it takes
+                        a slice of the array that generates the list of
+                        ranges, e.g. [200, 400, ...] Finally, if KIND =
+                        "value_by_value", then it slices the array generating
+                        the list of ranges by taking only the values that are
+                        within BEGIN and END, specified by --slice-range BEGIN
+                        END. Compatible with --range-from-file as well.
 ```
 
 Please note that the command line argument `--page_increment` is not currently
@@ -218,13 +243,13 @@ Note that when you use both the `--max_works` and `--end-page` options, it will
 stop scraping when either one is met. For example:
 
 ```
-python3 scrape.py -c FF -r T --max_works 1000000000 --end-page 5
+python3 scrape.py -c FF -r T --max-works 1000000000 --end-page 5
 ```
 
 will stop at page 5, and will only scrape 100 works (20 per page). But
 
 ```
-python3 scrape.py -c FF -r T --max_works 10 --end-page 1000
+python3 scrape.py -c FF -r T --max-works 10 --end-page 1000
 ```
 
 will stop at the first page.
@@ -244,7 +269,7 @@ of `batch_[...].json` files that could possibly confuse the batch collator (see 
 To test out `scrape.py`, use `--test_run`:
 
 ```
-python3 scrape.py [other options...] --test_run
+python3 scrape.py [other options...] --test-run
 ```
 
 The `--test_run` option automatically sets the max number of works to collect to 100, but
