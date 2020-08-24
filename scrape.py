@@ -653,6 +653,7 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
     pass
   write_to_restart_from_file(pages_to_retry)
   print(color("Num works: {}".format(num_works), fg="blue"))
+  return num_works
   pass
 
 def get_argument_parser():
@@ -858,6 +859,8 @@ if __name__ == '__main__':
   # I'm honestly surprised this hasn't come up as an issue before.
   params_dict["query"] = ""
 
+  print(args.slice_range is not None)
+
   if args.range_from_file is not None and not args.split_by_word_count:
     eprint("Error: used --range-from-file without specifying --split-by-word-count.")
     eprint("Exiting.")
@@ -937,6 +940,9 @@ if __name__ == '__main__':
           pass
         else:
           ranges = [r for r in ranges if r >= lo and r <= hi]
+          pass
+        pass
+      
       
       if not args.range_excludes_zero:
         word_count_queries.append("0-{}".format(ranges[0]))
@@ -947,7 +953,7 @@ if __name__ == '__main__':
         word_count_queries.append("{}-{}".format(i1, i2))
         pass
       word_count_queries.append(">{}".format(ranges[len(ranges)-1]))
-      if args.slice_range_by == "actual":
+      if args.slice_range_by == "actual" and args.slice_range is not None:
         slices = [int(s) for s in args.slice_range]
         lo = slices[0]
         hi = slices[1]
@@ -997,6 +1003,7 @@ if __name__ == '__main__':
   max_works = 100 if args.test_run and max_works < 0 else max_works
   if args.split_by_word_count:
     counter = 0
+    total_num_works = 0
     word_count_file_names = [query.replace(">", "gt").replace("<", "lt") for query in word_count_queries]
     while len(url_list) > 0:
       url = url_list.pop(0)
@@ -1020,19 +1027,20 @@ if __name__ == '__main__':
         params_dict["url"] = url
         params_dict["query"] = word_count_queries[counter]
         content = res.text
-        scrape_search_pages(content,
-                            params_dict,
-                            batch_name,
-                            max_works,
-                            restart_from_file=restart_from_file,
-                            end_page=args.end_page)
+        total_num_works += scrape_search_pages(content,
+                                               params_dict,
+                                               batch_name,
+                                               max_works,
+                                               restart_from_file=restart_from_file,
+                                               end_page=args.end_page)
         #if len(url_list) == 0:
         #  break
         #url = url_list.pop(0)
         counter += 1
         pass
       pass
-    print("Done with {} split batches. Exiting...".format(len(word_count_queries)))
+    print(color("Scraped {} total works.".format(total_num_works), fg="cyan"))
+    print(color("Done with {} split batches. Exiting...".format(len(word_count_queries)), fg="cyan"))
     sys.exit()
     pass
   
