@@ -15,6 +15,7 @@ from colors import color
 import os
 import re
 import scrape_utils as sutils
+import bs4
 
 ao3_home = "https://archiveofourown.org"
 
@@ -206,7 +207,7 @@ def get_stats(work_tag):
           pass
         pass
       for c in chapters_tag.contents:
-        if re.match(r"/(\d+|\?)", c):
+        if isinstance(c, bs4.element.NavigableString) and re.match(r"/(\d+|\?)", str(c)):
           max_chapters_text = re.sub(r"/(\d+|\?)", r"\1", c)
           if max_chapters_text != "?":
             max_chapters = int(max_chapters_text)
