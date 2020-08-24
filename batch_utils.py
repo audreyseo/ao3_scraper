@@ -108,36 +108,40 @@ def collate(filename, collate_all=False, remove_anons=False):
   works = []
   for f in myfiles:
     with open(f, "r") as j:
-      if len(works) == 0:
-        works = json.loads(j.read())
-        if "included_batch_files" not in works[0]:
-          # Start off by noting which files are going to be included
-          works[0]["included_batch_files"] = []
-          pass
-        if len(works[0]["included_batch_files"]) == 0:
-          works[0]["included_batch_files"] = dupes
-          pass
-        else:
-          for d in dupes:
-            if d not in works[0]["included_batch_files"]:
-              works[0]["included_batch_files"].append(d)
+      text = j.read()
+      if len(text) > 0:
+        if len(works) == 0:
+          works = json.loads(j.read())
+          if "included_batch_files" not in works[0]:
+            # Start off by noting which files are going to be included
+            works[0]["included_batch_files"] = []
+            pass
+          if len(works[0]["included_batch_files"]) == 0:
+            works[0]["included_batch_files"] = dupes
+            pass
+          else:
+            for d in dupes:
+              if d not in works[0]["included_batch_files"]:
+                works[0]["included_batch_files"].append(d)
+                pass
               pass
             pass
           pass
-        pass
-      else:
-        tempworks = json.loads(j.read())
-        # exclude the first one, which is
-        # just the params anyway
-        works += tempworks[1:]
-        if "urls" not in works[0]:
-          works[0]["urls"] = []
-          if "url" in works[0]:
-            works[0]["urls"].append(works[0]["url"])
-          pass
-        temp = tempworks[0]
-        if "url" in temp:
-          works[0]["urls"].append(temp["url"])
+        else:
+          tempworks = json.loads(j.read())
+          # exclude the first one, which is
+          # just the params anyway
+          works += tempworks[1:]
+          if "urls" not in works[0]:
+            works[0]["urls"] = []
+            if "url" in works[0]:
+              works[0]["urls"].append(works[0]["url"])
+              pass
+            pass
+          temp = tempworks[0]
+          if "url" in temp:
+            works[0]["urls"].append(temp["url"])
+            pass
           pass
         pass
       pass
