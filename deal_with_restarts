@@ -1,6 +1,19 @@
 #!/bin/bash
 
-for f in restart_batch*.txt
-do echo "dealing with $f..."
-python3 scrape.py --from-url-file $f
-done
+NUM=$#
+MIN=0
+
+if [ "$NUM" -gt "$MIN" ]; then
+   echo "Dealing with $NUM files"
+   for input in "$@"
+   do
+      echo "Dealing with $input..."
+      python3 scrape.py --from-url-file $input
+   done
+else
+  for f in restart_batch*.txt
+  do
+    echo "dealing with $f..."
+    python3 scrape.py --from-url-file $f
+  done
+fi
