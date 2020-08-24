@@ -1005,6 +1005,7 @@ if __name__ == '__main__':
   max_works = args.max_works
   max_works = 100 if args.test_run and max_works < 0 else max_works
   if args.split_by_word_count:
+    print(color("Starting {} batches...".format(len(word_count_queries)), fg="cyan"))
     counter = 0
     total_num_works = 0
     word_count_file_names = [query.replace(">", "gt").replace("<", "lt") for query in word_count_queries]
@@ -1040,6 +1041,7 @@ if __name__ == '__main__':
         #  break
         #url = url_list.pop(0)
         counter += 1
+        print(color("Done with {} queries...".format(counter), fg="cyan"))
         pass
       pass
     print(color("Scraped {} total works.".format(total_num_works), fg="cyan"))
