@@ -162,13 +162,20 @@ def collate(filename, collate_all=False, remove_anons=False):
         #print("Found a duplicate of {}".format(works[i]["title"]))
         this_date = get_last_updated_date(works[i])
         old_latest = seen_ids[myid]["latest_date"]
-        
+        this_chapters = int(works[i]["chapters"])
+        old_chapters = seen_ids[myid]["chapters"]
         if old_latest is not None and this_date is not None and old_latest < this_date:
           # this_date is newer
           seen_ids[myid]["indices"].append(seen_ids[myid]["latest_index"])
           seen_ids[myid]["latest_index"] = i
           seen_ids[myid]["latest_date"] = this_date
+          seen_ids[myid]["chapters"] = this_chapters
           pass
+        elif this_chapters > old_chapters:
+          seen_ids[myid]["indices"].append(seen_ids[myid]["latest_index"])
+          seen_ids[myid]["latest_index"] = i
+          seen_ids[myid]["latest_date"] = this_date
+          seen_ids[myid]["chapters"] = this_chapters
         else:
           seen_ids[myid]["indices"].append(i)
           pass
@@ -176,7 +183,7 @@ def collate(filename, collate_all=False, remove_anons=False):
         pass
       else:
         if myid is not None and len(myid) > 0:
-          seen_ids[myid] = {"indices": [], "latest_index": i, "latest_date": get_last_updated_date(works[i])}
+          seen_ids[myid] = {"indices": [], "latest_index": i, "latest_date": get_last_updated_date(works[i]), "chapters": int(works[i]["chapters"])}
           pass
         else:
           print("Weird, got 0-length id:\n{}".format(json.dumps(works[i], indent="  ")))
