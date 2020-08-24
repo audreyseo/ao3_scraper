@@ -8,6 +8,7 @@ import time
 import glob
 import re
 import sys
+from utils import eprint
 
 from datetime import datetime
 
@@ -35,20 +36,38 @@ def get_files_to_collate(filename, collate_all):
     # get the parameters for the particular file, so that
     # they can all be squished together
     params = {}
+    works = []
+    exclude = []
+    text = ""
     with open(filename, "r") as f:
-      works = json.loads(f.read())
+      text = f.read()
+    if len(text.strip()) > 0:
+      works = json.loads(text)
       params = works[0]
+      exclude = add_files_to_exclude(params)
+    else:
+      eprint("Warning: the file {} is empty. Please try a different file.")
+      eprint("Quitting now.")
+      sys.exit()
       pass
-    exclude = add_files_to_exclude(params)
+    
     for name in glob.glob("./batch_*.json"):
       should_add = True
       batch_params = {}
       name = os.path.basename(name)
       if name not in exclude:
+        text = ""
         with open(name, "r") as f:
-          works = json.loads(f.read())
-          batch_params = works[0]
+          text = f.read()
           pass
+        if len(text.strip()) == 0:
+          # this name is worthless
+          exclude.append(name)
+          continue
+        
+        works = json.loads(text)
+        batch_params = works[0]
+                  
         for param, p in searchables_to_params_dict_keys.items():
           if p in params:
             should_add = should_add and p in batch_params and params[p] == batch_params[p]
@@ -109,9 +128,10 @@ def collate(filename, collate_all=False, remove_anons=False):
   for f in myfiles:
     with open(f, "r") as j:
       text = j.read()
-      if len(text) > 0:
+      if len(text.strip()) > 0:
+        print("Text: \"{}\"".format(text if len(text) < 100 else text[:100]))
         if len(works) == 0:
-          works = json.loads(j.read())
+          works = json.loads(text)
           if "included_batch_files" not in works[0]:
             # Start off by noting which files are going to be included
             works[0]["included_batch_files"] = []
@@ -128,7 +148,7 @@ def collate(filename, collate_all=False, remove_anons=False):
             pass
           pass
         else:
-          tempworks = json.loads(j.read())
+          tempworks = json.loads(text)
           # exclude the first one, which is
           # just the params anyway
           works += tempworks[1:]
