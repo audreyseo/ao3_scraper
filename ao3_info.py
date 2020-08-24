@@ -268,10 +268,13 @@ def save_url_params(params_dict, url,
                     save_page=True,
                     save_rating_ids=True,
                     save_category_ids=True,
-                    save_archive_warning_ids=True):
+                    save_archive_warning_ids=True,
+                    save_word_count=True):
+  #          (name in url)       (name in params)
   # looks at rating_ids          (rating)
   #          category_ids        (category)
   #          archive_warning_ids (warning)
+  #          word_count          (query)
   def alert_to_error(param_name, value, id_to_param):
     print("Could not match value {} to an accepted value of {}! Expected: {}\n\tBad url: {}".format(value, param_name, [i for i in id_to_param], url))
     pass
@@ -347,6 +350,19 @@ def save_url_params(params_dict, url,
   elif save_archive_warning_ids:
     params_dict["warning"] = []
     pass
+  if save_word_count and "word_count" in search_params:
+    keyname = "word_count"
+    word_count = search_params[keyname]
+    if len(word_count) > 0:
+      assert len(word_count) == 1
+      params_dict["query"] = word_count[0]
+      pass
+    else:
+      params_dict["query"] = ""
+      pass
+    pass
+  elif save_word_count:
+    params_dict["query"] = ""
   pass
 
 keys_to_ids = {

@@ -990,7 +990,8 @@ if __name__ == '__main__':
                       url,
                       save_rating_ids=False,
                       save_category_ids=False,
-                      save_archive_warning_ids=False)
+                      save_archive_warning_ids=False,
+                      save_word_count=False)
     pass
 
   # too much info lmao if there's a lot of urls
