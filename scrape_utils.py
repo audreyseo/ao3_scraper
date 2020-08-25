@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
 import re
+from colors import color
 
 ao3_home = "https://archiveofourown.org"
 
