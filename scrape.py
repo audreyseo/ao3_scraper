@@ -126,7 +126,7 @@ def find_completeness(tag):
 def has_title(tag):
   return "title" in tag.attrs
   
-def get_required(work_tag):
+def get_required_tags(work_tag):
   finds = find_all_of_classes(work_tag, "ul", "required-tags")
   if len(finds) == 1:
     found = finds[0]
@@ -201,10 +201,14 @@ def get_stats(work_tag):
       # Gotta do something about this
       latest_chapter_link = chapters_tag.find("a")
       if latest_chapter_link is not None:
+        #print("Latest chapter inkk: {}".format(latest_chapter_link))
         chapters_text = sutils.get_string(latest_chapter_link).strip()
-        if re.match(r"\d[0-9,]+", chapters_text):
+        print("chapters_text: {}".format(chapters_text))
+        if re.match(r"\d+", chapters_text):
           chapters = int(chapters_text)
           pass
+        #else:
+        #  print("Oh no, did not match.")
         pass
       for c in chapters_tag.contents:
         if isinstance(c, bs4.element.NavigableString) and re.match(r"/(\d+|\?)", str(c)):
@@ -395,7 +399,7 @@ def search_start(contents, works, page):
   for w in raw_works:
     title, title_link, author, author_link = get_title_and_author(w)
     fandoms = get_fandoms(w)
-    rating, warnings, categories, complete = get_required(w)
+    rating, warnings, categories, complete = get_required_tags(w)
     last_updated = get_last_updated(w)
     relationships, characters, tags = get_tags(w)
     summary = get_summary(w)
