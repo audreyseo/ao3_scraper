@@ -577,7 +577,7 @@ def scrape_search_pages(content, params_dict, batch_name, max_works, restart_fro
           print("Left off trying to get page number {}".format(page))
           # TRYING THIS, DUNNO IF IT WILL WORK
           pages_to_retry.append(old_next_url)
-          if max_page_number > 0 and page + 1 <= max_page_number and not using_from_file:
+          if (max_page_number == -1 or (max_page_number > 0 and  page + 1 <= max_page_number)) and not using_from_file:
             next_url = ao3_work_search_url(category_ids=params_dict["category"],
                                            rating_ids=params_dict["rating"],
                                            archive_warning_ids=params_dict["warning"],
