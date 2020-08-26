@@ -203,7 +203,7 @@ def get_stats(work_tag):
       if latest_chapter_link is not None:
         #print("Latest chapter inkk: {}".format(latest_chapter_link))
         chapters_text = sutils.get_string(latest_chapter_link).strip()
-        print("chapters_text: {}".format(chapters_text))
+        #print("chapters_text: {}".format(chapters_text))
         if re.match(r"\d+", chapters_text):
           chapters = int(chapters_text)
           pass
