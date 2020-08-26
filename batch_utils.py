@@ -1,7 +1,7 @@
 import argparse
 import os
 import json
-from ao3_info import get_work_id, save_url_params
+from ao3_info import get_work_id, save_url_params, full_rating_to_abbr, warning_to_abbr
 from scrape import searchable_parameters, searchables_to_params_dict_keys
 import readline
 import time
@@ -9,6 +9,7 @@ import glob
 import re
 import sys
 from utils import eprint
+from colors import color
 
 from datetime import datetime
 
@@ -250,13 +251,176 @@ def collate(filename, collate_all=False, remove_anons=False):
   return fall
 
 
+def lighten(work,
+            keep_title=True,
+            keep_title_url=True,
+            add_work_id=False,
+            keep_author=True,
+            keep_author_url=True,
+            keep_fandom_names=True,
+            keep_fandom_urls=True,
+            keep_rating=True,
+            abbreviate_rating=False,
+            keep_warnings=True,
+            abbreviate_warnings=False,
+            keep_category=True,
+            keep_complete=True,
+            keep_last_updated=True,
+            keep_relationships_names=True,
+            keep_relationships_urls=True,
+            keep_characters_names=True,
+            keep_characters_urls=True,
+            keep_tags_names=True,
+            keep_tags_urls=True,
+            keep_summary=True,
+            keep_language=True,
+            keep_words=True,
+            keep_chapters=True,
+            keep_max_chapters=True,
+            keep_hits=True,
+            transform=lambda newWork, oldWork: newWork):
+  newwork = {}
+  def add_key(keyname, should_add_key, accesser=lambda x: x, new_key_name=None, default=""):
+    nonlocal newwork
+    if new_key_name is None:
+      new_key_name = keyname
+    if should_add_key:
+      if keyname in work:
+        newwork[new_key_name] = accesser(work[keyname])
+        pass
+      else:
+        newwork[new_key_name] = default
+        pass
+      pass
+    pass
+  def add_lists_of_pairs(keep_item_0, keep_item_1):
+    def make_final(list_of_pairs):
+      # Always runs in an instance where at least one is true
+      if keep_item_0 and keep_item_1:
+        return list_of_pairs
+      elif keep_item_0:
+        return [pair[0] for pair in list_of_pairs]
+      elif keep_item_1:
+        return [pair[1] for pair in list_of_pairs]
+      pass
+    return make_final
+
+  def make_abbreviation(add_abbreviation, abbreviator):
+    def make_final(mystr):
+      if isinstance(mystr, str):
+        if mystr.find(",") > -1:
+          splits = mystr.split(",")
+          splits = [s.strip() for s in splits]
+          return [(abbreviator[s] if add_abbreviation and s in abbreviator else s) for s in splits]
+        return abbreviator[mystr] if add_abbreviation and mystr in abbreviator else mystr
+      elif isinstance(mystr, list):
+        return [(abbreviator[s] if add_abbreviation and s in abbreviator else s) for s in mystr]
+    return make_final
+        
+  
+  add_key("title", keep_title)
+  add_key("title_url", keep_title_url)
+  add_key("title_url", add_work_id, accesser=get_work_id, new_key_name="work_id")
+  add_key("author", keep_author)
+  add_key("author_url", keep_author_url)
+  add_key("fandom",
+          keep_fandom_names or keep_fandom_urls,
+          accesser=add_lists_of_pairs(keep_fandom_names, keep_fandom_urls))
+  add_key("rating",
+          keep_rating,
+          accesser=make_abbreviation(abbreviate_rating, full_rating_to_abbr))
+  add_key("warnings", keep_warnings,
+          accesser=make_abbreviation(abbreviate_warnings, warning_to_abbr),
+          default=[])
+  add_key("category", keep_category, default=[])
+  add_key("complete", keep_complete, default=None)
+  add_key("last_updated", keep_last_updated, default=None)
+  add_key("relationships", keep_relationships_names or keep_relationships_urls,
+          accesser=add_lists_of_pairs(keep_relationships_names, keep_relationships_urls),
+          default=[])
+  add_key("characters", keep_characters_names or keep_characters_urls,
+          accesser=add_lists_of_pairs(keep_characters_names, keep_characters_urls),
+          default=[])
+  add_key("tags", keep_tags_names or keep_tags_urls,
+          accesser=add_lists_of_pairs(keep_tags_names, keep_tags_urls),
+          default=[])
+  add_key("summary", keep_summary)
+  add_key("language", keep_language)
+  add_key("words", keep_words)
+  add_key("chapters", keep_chapters)
+  add_key("max_chapters", keep_max_chapters)
+  add_key("hits", keep_hits)
+  return transform(newwork, work)
 
 
+def lighten_all(filename):
+  def my_transformer(newwork, work):
+    if "chapters" in work:
+      # Deal with both the error case and the normal case
+      newwork["multichapter"] = work["chapters"] == 0 or work["chapters"] > 1
+    else:
+      newwork["multichapter"] = None
+    return newwork
+  if os.path.exists(filename):
+    text = ""
+    with open(filename, "r") as f:
+      text = f.read()
+      pass
+    if len(text.strip()) == 0:
+      print("Nothing found in file {}. Exiting now...".format(filename))
+      sys.exit()
+      pass
+    works = json.loads(text)
+    new_works = []
+    params = works[0]
+    if "batch_type" not in params:
+      params["batch_type"] = "lightweight"
+      pass
+    else:
+      if isinstance(params["batch_type"], list):
+        params["batch_type"].append("lightweight")
+        pass
+      else:
+        # Must be somethnig...
+        bt = params["batch_type"]
+        params["batch_type"] = [bt, "lightweight"]
+        pass
+      pass
+    new_works.append(params)
+    for i in range(1, len(works)):
+      w = works[i]
+      new_works.append(lighten(w,
+                               keep_title_url=False,
+                               add_work_id=True,
+                               keep_author_url=False,
+                               keep_fandom_urls=False,
+                               abbreviate_rating=True,
+                               abbreviate_warnings=True,
+                               keep_complete=False,
+                               keep_relationships_urls=False,
+                               keep_characters_urls=False,
+                               keep_tags_urls=False,
+                               keep_chapters=False,
+                               keep_max_chapters=False,
+                               transform=my_transformer))
+      pass
+    base, ext = os.path.splitext(filename)
+    newfilename = base + "_lw" + ext
+    print(color("Writing out {} lightened works to {}".format(len(new_works) - 1, newfilename), fg="cyan"))
+    with open(newfilename, "w") as f:
+      f.write(json.dumps(new_works, indent="  "))
+      f.flush()
+      pass
+    pass
+  else:
+    print("Warning, file name {} does not exist. Exiting now.".format(filename))
+    sys.exit()
+    
 
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
-  parser.add_argument("action", choices=["collate", "stats", "convert_restart_file"], help="Which action to take. collate takes all of the files from the same run and puts them together. stats will preform some rudimentary statistics on a given file. convert_restart_file takes a json/txt file of urls that need to be re-scraped and turns it into an appropriately formatted txt/json file, respectively.")
+  parser.add_argument("action", choices=["collate", "stats", "convert_restart_file", "lighten"], help="Which action to take. collate takes all of the files from the same run and puts them together. stats will preform some rudimentary statistics on a given file. convert_restart_file takes a json/txt file of urls that need to be re-scraped and turns it into an appropriately formatted txt/json file, respectively. lighten will make the file more lightweight by removing extraneous data, and outputs a new file with name [filename]_lw.json.")
   parser.add_argument("file", help="The name of the batch (or restart) file to process")
   parser.add_argument("-a", "--all", action="store_true", help="Used only when collating. If present, then it will actually collate together all batch files run with the same search parameters. Otherwise, only files that have the same timestamp will be collated together.")
   parser.add_argument("-r", "--rating", default="", choices=["", "G", "T", "M", "E", "NR"], help="Which rating to give a bunch of urls. Only used for converting .txt to json files, for convert_restart_file.")
@@ -273,7 +437,10 @@ if __name__ == '__main__':
   # Add tab completion in the case of trying a different file name
   readline.set_completer_delims(' \t\n=')
   readline.parse_and_bind("tab: complete")
-  if args.action=="convert_restart_file":
+
+  if args.action == "lighten":
+    lighten_all(args.file)
+  elif args.action=="convert_restart_file":
     restart_file = args.file
     base, ext = os.path.splitext(restart_file)
     if ext != ".txt" and ext != ".json":

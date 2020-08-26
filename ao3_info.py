@@ -175,9 +175,11 @@ rating_to_abbreviation = {
   "M": "Mature",
   "E": "Explicit",
   "NR": "Not Rated",
-  "T": "Teen",
+  "T": "Teen And Up Audiences",
   "G": "General Audiences"
 }
+
+full_rating_to_abbr = {rating: abbr for abbr, rating in rating_to_abbreviation.items()}
 
 id_to_rating = {
   "9": "NR",
@@ -230,6 +232,15 @@ warning_to_id = {
   "Underage": 20,
   "Graphic Depictions Of Violence": 17,
   "GDOV": 17
+}
+
+warning_to_abbr = {
+  "No Archive Warnings Apply": "NAWA",
+  "Rape/Non-Con": "RNC",
+  "Major Character Death": "MCD",
+  "Choose Not To Use Archive Warnings": "CNTUAW",
+  "Underage": "Underage",
+  "Graphic Depictions Of Violence": "GDOV"
 }
 
 id_to_warning = {
